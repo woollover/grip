@@ -259,4 +259,20 @@ It is not trying to compete with Substack or Medium or Bluesky. It is trying to 
 
 ---
 
-*GRIP is free software. Do what you want with it. The manifesto lives in `.claude/MANIFESTO.md`.*
+## License
+
+GRIP is released under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+This choice is deliberate and coherent with the manifesto.
+
+The AGPL allows anyone to use, fork, modify, and run GRIP freely — on their own machine, their own server, in any context. The one restriction: if you modify GRIP and run it as a **network service** (i.e. a hosted platform for others), you must publish your source code to those users.
+
+This is the only restriction, and it targets the only scenario the manifesto explicitly warns against: someone taking this tool of sovereignty and turning it into a new platform that captures others. The license and the philosophy say the same thing.
+
+If you fork GRIP and run it for yourself, you owe nothing to anyone. It is yours.
+
+See `LICENSE` for the full text.
+
+---
+
+*The manifesto lives in `MANIFESTO.md`.*
