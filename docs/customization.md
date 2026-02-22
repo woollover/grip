@@ -2,7 +2,7 @@
 
 GRIP is designed to be yours. This guide explains how to make it look, feel, and behave the way you want. It assumes you are comfortable reading and editing code.
 
-Everything in here is optional. You can run GRIP without changing a single line of source, and it will work just fine with the defaults.
+Everything in here is optional. You can run GRIP without changing a single line of source, and it will work fine with the defaults.
 
 ---
 
@@ -10,70 +10,79 @@ Everything in here is optional. You can run GRIP without changing a single line 
 
 GRIP ships with three built-in themes: **light**, **dark**, and **cyberpunk**.
 
-To switch between them, go to the author interface (`https://author.example.com`), open the Settings page, and select a theme from the dropdown. The change takes effect immediately and is persisted in the database.
+To switch, open the author interface, go to **Settings**, and select a theme. The change takes effect immediately on both the public site and the author interface.
 
-Under the hood, selecting a theme writes a `SettingChanged` event to the event store with `key: "theme"` and the chosen value. On startup and after any change, the `config` projection table is updated and GRIP reads the active theme from there.
+Theme selection writes directly to the `config` table in the database. It is not recorded in the event store — it is a cosmetic preference, not a meaningful act.
 
 ---
 
 ## 2. Creating a Custom Theme
 
-Themes are defined in `src/core/themes.ts`. Each theme is a set of CSS custom property overrides layered on top of PicoCSS v2's defaults.
+Themes are defined in `src/core/themes.ts`. Each theme is a raw CSS string that gets served at the `/theme.css` endpoint on both servers. Both layouts link to it with `<link rel="stylesheet" href="/theme.css">`.
 
-The file looks like this:
+The actual structure:
 
 ```typescript
 // src/core/themes.ts
 
-export type ThemeId = "light" | "dark" | "cyberpunk" | "your-theme-id";
+export type ThemeName = 'light' | 'dark' | 'cyberpunk';
 
-export const THEMES: Record<ThemeId, Theme> = {
-  light: {
-    label: "Light",
-    vars: {
-      "--pico-font-family": "Georgia, serif",
-      "--pico-color": "#1a1a1a",
-      "--pico-background-color": "#ffffff",
-      "--pico-primary": "#0066cc",
-    },
-  },
-  dark: {
-    label: "Dark",
-    vars: {
-      "--pico-font-family": "Georgia, serif",
-      "--pico-color": "#e8e8e8",
-      "--pico-background-color": "#111111",
-      "--pico-primary": "#4da6ff",
-    },
-  },
-  cyberpunk: {
-    label: "Cyberpunk",
-    vars: {
-      "--pico-font-family": "'Courier New', monospace",
-      "--pico-color": "#00ff41",
-      "--pico-background-color": "#0a0a0a",
-      "--pico-primary": "#ff00ff",
-    },
-  },
+export const THEMES: Record<ThemeName, string> = {
+  light: `/* GRIP — Light theme (PicoCSS default) */
+:root { color-scheme: light; }
+`,
+
+  dark: `/* GRIP — Dark theme */
+:root { color-scheme: dark; }
+html[data-theme="dark"] {
+  --pico-background-color: #13171f;
+  --pico-card-background-color: #1c2030;
+}
+`,
+
+  cyberpunk: `/* GRIP — Cyberpunk theme */
+:root {
+  color-scheme: dark;
+  --pico-font-family: 'Courier New', monospace;
+  --pico-background-color: #0a0a12;
+  --pico-primary: #00ff88;
+  /* ... */
+}
+`,
 };
 ```
 
 **To add a new theme:**
 
 1. Open `src/core/themes.ts`.
-2. Add your theme ID to the `ThemeId` union type.
-3. Add an entry to the `THEMES` object with a `label` and a `vars` map.
-4. Restart GRIP. Your new theme will appear in the Settings dropdown.
+2. Add your theme name to the `ThemeName` union type:
+   ```typescript
+   export type ThemeName = 'light' | 'dark' | 'cyberpunk' | 'forest';
+   ```
+3. Add an entry to the `THEMES` object with a CSS string:
+   ```typescript
+   forest: `/* GRIP — Forest theme */
+   :root {
+     color-scheme: light;
+     --pico-background-color: #f4f1ec;
+     --pico-color: #2c3e2d;
+     --pico-primary: #4a7c59;
+     --pico-font-family: Georgia, serif;
+   }
+   `,
+   ```
+4. Add it to the allowed list in `src/server/author/routes/settings.tsx`:
+   ```typescript
+   const allowed: Theme[] = ['light', 'dark', 'cyberpunk', 'forest'];
+   ```
+5. Add a radio option in the `themeOptions` array in the same file.
+6. Restart GRIP. Your theme will appear in Settings.
 
 **PicoCSS v2 custom properties that matter:**
-
-PicoCSS v2 uses CSS custom properties throughout. The most useful ones to override:
 
 | Property | What it controls |
 |---|---|
 | `--pico-font-family` | Body font stack |
-| `--pico-font-size` | Base font size (default `16px`) |
-| `--pico-line-height` | Line height for body text |
 | `--pico-color` | Default text color |
 | `--pico-background-color` | Page background |
 | `--pico-primary` | Accent color (links, buttons, focus rings) |
@@ -81,228 +90,183 @@ PicoCSS v2 uses CSS custom properties throughout. The most useful ones to overri
 | `--pico-muted-color` | Muted/secondary text |
 | `--pico-muted-border-color` | Borders and dividers |
 | `--pico-card-background-color` | Card and article block backgrounds |
-| `--pico-card-border-color` | Card borders |
-| `--pico-ins-color` | Inserted/highlighted text |
+| `--pico-h1-color` through `--pico-h4-color` | Heading colours |
+| `--pico-code-color` | Inline code text colour |
+| `--pico-code-background-color` | Inline code background |
 
-For a full list of variables, open `public/static/pico.min.css` and search for `--pico-`. The file is minified but readable with a formatter.
+For a full list, open `public/static/pico.min.css` and search for `--pico-`. Paste the minified file into a formatter first for readability.
 
-**How theme vars are applied:**
+**How themes are applied:**
 
-The active theme's `vars` are written into a `<style>` block on every page inside a `:root { }` selector. This overrides PicoCSS's defaults for the entire page. No JavaScript involved.
+Both servers expose `GET /theme.css`. This endpoint reads the active theme name from the `config` table and returns the corresponding CSS string. The `<html>` tag also gets `data-theme="dark"` for dark and cyberpunk themes so PicoCSS's dark-mode variables kick in.
 
 ---
 
 ## 3. Site Identity
 
-Your site's title, description, and domain are set during `grip setup` and stored in the `config` table. You can change them in two ways:
+Your site title, description, and domain are set during `bun run cli setup` and stored in the `config` table. You can change them in two ways:
 
-**Via the Settings page** in the author interface. Changes take effect immediately.
+**Via the Settings page** in the author interface. Changes are logged as a `SiteConfigUpdated` event in the event store and applied immediately.
 
-**Via `grip.toml`** (for manual or scripted changes):
-
-```toml
-[site]
-title = "My GRIP"
-description = "A personal web space."
-domain = "example.com"
-
-[server]
-public_port = 3000
-author_port = 4000
-
-[auth]
-session_days = 7
-```
-
-If you edit `grip.toml` directly, restart GRIP for the changes to be read. Note that `grip.toml` values are read at startup and written into the database — the database is the source of truth at runtime. Editing the toml while GRIP is running has no immediate effect.
+**Via `grip.toml`** — but note that `grip.toml` is only read at startup to seed the database on first run. The database is the source of truth at runtime. Editing `grip.toml` after setup has no effect unless you run setup again.
 
 ---
 
 ## 4. Layout Customization
 
-GRIP has two separate layout contexts:
+GRIP has two layout contexts:
 
-**The public site** layout is in `src/views/layout.tsx`. This wraps every page that visitors see. It generates the outer HTML shell: `<head>`, theme vars, navigation, and footer.
+**Public site** — `src/views/layout.tsx`. The `publicLayout()` function wraps every page visitors see. It generates the full HTML shell including `<head>`, nav, and footer.
 
-**The author interface** layout is in `src/server/author/routes/layout.ts`. This wraps the editing UI that only you see.
+**Author interface** — `src/server/author/routes/layout.ts`. The `authorLayout()` function wraps every page in the writing UI.
+
+Both are plain TypeScript functions that return HTML strings — no JSX compiler, no build step.
 
 ### Adding navigation links to the public site
 
-Open `src/views/layout.tsx` and find the `<nav>` element:
+Open `src/views/layout.tsx` and find the `<nav>` block:
 
-```tsx
-// src/views/layout.tsx (simplified)
-export function Layout({ title, children, theme }: LayoutProps) {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <title>${escapeHtml(title)}</title>
-  <link rel="stylesheet" href="/static/pico.min.css">
-  <style>:root { ${themeVars} }</style>
-</head>
-<body>
-  <header>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/archive">Archive</a>
-      <!-- Add your links here -->
-    </nav>
-  </header>
-  <main>${children}</main>
-  <footer>
-    <p>${escapeHtml(siteTitle)}</p>
-    <!-- Add footer content here -->
-  </footer>
-</body>
-</html>`;
-}
+```typescript
+  <nav>
+    <ul>
+      <li><strong><a href="/">${siteTitle}</a></strong></li>
+    </ul>
+    <ul>
+      <li><a href="/articles">Articles</a></li>
+      <li><a href="/micro">Notes</a></li>
+    </ul>
+  </nav>
 ```
 
-Add links, a tagline, or any static HTML you want inside those blocks. This is plain HTML inside a template string — no build step required. Restart GRIP after editing.
+Add links to the second `<ul>`. For example, to add a pages link:
+
+```typescript
+      <li><a href="/pages/about">About</a></li>
+```
+
+Restart GRIP after editing.
 
 ### Adding custom CSS
 
-The cleanest place to add custom styles is in the `<style>` block inside the layout, after the theme vars:
+Add a `<style>` block inside the `<head>` in the layout, after the theme link:
 
-```tsx
-<style>
-  :root { ${themeVars} }
-
-  /* Your custom CSS below */
-  article h1 { font-size: 1.8rem; }
-  .micro-post { border-left: 3px solid var(--pico-primary); padding-left: 1rem; }
-</style>
+```typescript
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    article h1 { font-size: 1.8rem; }
+    .micro-post { border-left: 3px solid var(--pico-primary); padding-left: 1rem; }
+  </style>
 ```
 
-Because PicoCSS is classless, you can style standard HTML elements directly without adding class names to the templates.
+PicoCSS is classless — you can style standard HTML elements directly without adding classes to templates.
 
 ---
 
 ## 5. Adding a New Content Type
 
-GRIP uses event sourcing. All state changes are events. To add a new content type (e.g. "bookmarks", "recipes", "reading notes"), you follow this pattern:
+GRIP uses event sourcing. All state changes are events. To add a new content type (e.g. bookmarks, recipes, reading notes), follow this pattern:
 
 ### Step 1 — Define the event type
 
-In `src/core/events.ts`, add a new event interface and include it in the union type:
+In `src/core/event-types.ts`, add to the `GripEvent` union:
 
 ```typescript
-// src/core/events.ts
+// src/core/event-types.ts
 
-export interface BookmarkCreated {
-  type: "BookmarkCreated";
-  id: string;       // ULID
-  url: string;
-  title: string;
-  comment: string;
-  tags: string[];
-}
-
-// Add to the union:
 export type GripEvent =
-  | ArticleCreated
-  | ArticleUpdated
-  | MicroPostCreated
-  | BookmarkCreated  // <-- add this
-  // ... other events
+  // ... existing events ...
+
+  // Bookmarks
+  | { type: 'BookmarkCreated'; id: string; url: string; title: string; comment: string; tags: string[] }
 ```
 
-### Step 2 — Handle it in projections
+### Step 2 — Create the projection table
 
-In `src/core/projections.ts`, create a projection table for bookmarks and handle the event:
+In `src/core/db.ts`, add the table to `initSchema()`:
 
 ```typescript
-// src/core/projections.ts
-
-// In the createTables() function, add:
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS bookmarks (
-    id TEXT PRIMARY KEY,
-    url TEXT NOT NULL,
-    title TEXT NOT NULL,
-    comment TEXT NOT NULL DEFAULT '',
-    tags TEXT NOT NULL DEFAULT '[]',
-    created_at TEXT NOT NULL
-  ) STRICT
+    id          TEXT PRIMARY KEY,
+    url         TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    comment     TEXT NOT NULL DEFAULT '',
+    tags        TEXT NOT NULL DEFAULT '[]',
+    created_at  INTEGER NOT NULL
+  ) STRICT;
 `);
-
-// In the applyEvent() function, add a case:
-case "BookmarkCreated":
-  db.run(
-    `INSERT INTO bookmarks (id, url, title, comment, tags, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      event.id,
-      event.url,
-      event.title,
-      event.comment,
-      JSON.stringify(event.tags),
-      ulidToDate(event.id).toISOString(),
-    ]
-  );
-  break;
 ```
 
-### Step 3 — Add author routes (to create bookmarks)
+### Step 3 — Handle the event in projections
 
-Create `src/server/author/routes/bookmarks.ts`:
+In `src/core/projections.ts`, add a case to `applyEvent()`:
 
 ```typescript
-// src/server/author/routes/bookmarks.ts
-import { Elysia } from "elysia";
-import { getDb } from "../../../core/db";
-import { appendEvent } from "../../../core/events";
-import { ulid } from "ulidx";
-
-export const bookmarkRoutes = new Elysia()
-  .get("/bookmarks/new", ({ session }) => {
-    // Return an HTML form for creating a bookmark
-    return `<form method="POST" action="/bookmarks">
-      <input name="url" placeholder="URL" required>
-      <input name="title" placeholder="Title" required>
-      <textarea name="comment"></textarea>
-      <button type="submit">Save</button>
-    </form>`;
-  })
-  .post("/bookmarks", ({ body, session }) => {
-    const id = ulid();
-    appendEvent(getDb(), {
-      type: "BookmarkCreated",
-      id,
-      url: body.url,
-      title: body.title,
-      comment: body.comment ?? "",
-      tags: [],
-    });
-    return Response.redirect("/bookmarks", 303);
-  });
+case 'BookmarkCreated': {
+  db.prepare(`
+    INSERT OR REPLACE INTO bookmarks (id, url, title, comment, tags, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(event.id, event.url, event.title, event.comment, JSON.stringify(event.tags), createdAt);
+  break;
+}
 ```
 
-Register it in the author app setup.
+### Step 4 — Add author routes (to create bookmarks)
 
-### Step 4 — Add public routes (to display bookmarks)
+Create `src/server/author/routes/bookmarks.tsx` and export render/handler functions following the same pattern as `articles.tsx`. Then register the routes in `src/server/author/index.ts`:
 
-Create `src/server/public/routes/bookmarks.ts` and add a route that queries the `bookmarks` projection table and returns HTML.
+```typescript
+import { renderBookmarksIndex, handleBookmarkCreate } from './routes/bookmarks';
 
-### Step 5 — Rebuild if needed
+// Inside createAuthorApp():
+app.get('/bookmarks', ({ cookie }) => {
+  return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderBookmarksIndex(db));
+});
 
-If you are adding this to an existing GRIP with existing data, run:
+app.post('/bookmarks', ({ body, cookie }) => {
+  const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+  if (guard) return guard;
+  handleBookmarkCreate(db, store, body as any);
+  return new Response(null, { status: 302, headers: { Location: '/bookmarks' } });
+});
+```
+
+The handler uses `store.append()` (the `EventStore` instance already in scope):
+
+```typescript
+export function handleBookmarkCreate(db: Database, store: EventStore, body: {...}): void {
+  const id = ulid();
+  const event = { type: 'BookmarkCreated' as const, id, url: body.url, title: body.title, comment: body.comment ?? '', tags: [] };
+  store.append(event);
+  applyEvent(db, event, Date.now());
+}
+```
+
+### Step 5 — Add public routes (to display bookmarks)
+
+Create `src/server/public/routes/bookmarks.tsx` and register it in `src/server/public/index.ts`.
+
+### Step 6 — Rebuild if needed
+
+If you are adding this to an existing GRIP with data:
 
 ```bash
-bun run src/cli/index.ts rebuild
+systemctl stop grip
+bun run cli rebuild
+systemctl start grip
 ```
 
-This replays all events and rebuilds every projection table, including the new `bookmarks` table. Your existing content is unaffected.
+This replays all events and rebuilds every projection table. Your events are never touched.
 
 ---
 
 ## 6. Custom Fonts
 
-GRIP vendors its assets to avoid external dependencies. If you want a custom font, follow the same principle:
+GRIP vendors its assets to avoid external dependencies. Follow the same principle for fonts:
 
-1. Download the font files (`.woff2` is the right format for modern browsers).
-2. Put them in `public/static/fonts/` (create the directory if it does not exist).
-3. Add a `@font-face` declaration in the layout's `<style>` block:
+1. Download font files in `.woff2` format.
+2. Put them in `public/static/fonts/` (create the directory if needed).
+3. Add a `@font-face` declaration in your theme's CSS string in `src/core/themes.ts`:
 
 ```css
 @font-face {
@@ -310,102 +274,80 @@ GRIP vendors its assets to avoid external dependencies. If you want a custom fon
   src: url("/static/fonts/myfont.woff2") format("woff2");
   font-display: swap;
 }
+:root {
+  --pico-font-family: "MyFont", Georgia, serif;
+}
 ```
 
-4. Reference it in your theme's `--pico-font-family` variable or in a custom CSS rule.
+[Fontsource](https://fontsource.org/) publishes open-source fonts as downloadable packages. Or use a system font stack and skip the download:
 
-Google Fonts has a "Download family" button for any font. Other sources: [Fontsource](https://fontsource.org/) publishes open-source fonts as downloadable packages, or you can use system fonts and avoid the download entirely. Common system font stacks:
-
-```
-/* Serif */
-font-family: Georgia, "Times New Roman", serif;
-
-/* Sans-serif */
-font-family: system-ui, -apple-system, sans-serif;
-
-/* Monospace */
-font-family: "Courier New", Courier, monospace;
+```css
+/* Serif */    font-family: Georgia, "Times New Roman", serif;
+/* Sans */     font-family: system-ui, -apple-system, sans-serif;
+/* Mono */     font-family: "Courier New", Courier, monospace;
 ```
 
 ---
 
 ## 7. grip.toml Reference
 
-`grip.toml` is created by `grip setup` in the GRIP root directory. Here is a full reference of all supported options:
+`grip.toml` is created by `bun run cli setup`. It is gitignored — `grip.toml.example` is the versioned template. Values are read at startup and seeded into the database; the database is the source of truth at runtime.
 
 ```toml
-[site]
-# The name of your site, shown in the browser title bar and site header.
-title = "My GRIP"
-
-# A short description used in the HTML meta description tag.
-description = "A personal web space."
-
-# Your public domain, without protocol. Used to generate canonical URLs.
-domain = "example.com"
-
 [server]
-# Port for the public-facing site. Default: 3000.
-public_port = 3000
+# Port for the public-facing site (proxied by Caddy)
+public_port  = 3000
 
-# Port for the author interface. Default: 4000.
-author_port = 4000
+# Port for the author interface
+author_port  = 4000
 
-# Host to bind both servers to. Default: 127.0.0.1 (loopback only, not public).
-# Change to 0.0.0.0 only if you know what you are doing.
-host = "127.0.0.1"
+# Your domain — used in RSS feed URLs
+domain       = "example.com"
 
-[auth]
-# How many days a session cookie lasts before requiring login again. Default: 7.
-session_days = 7
+[data]
+# Path to the SQLite database file
+db_path      = "./data/grip.sqlite"
 
-# Number of failed login attempts before a 15-minute IP lockout. Default: 5.
-rate_limit_attempts = 5
+# Directory for uploaded media files
+media_path   = "./media"
 
-# Duration of the lockout in minutes. Default: 15.
-rate_limit_minutes = 15
+[site]
+# Shown in the site header and RSS feed title
+title        = "My GRIP"
 
-[paths]
-# Directory for the SQLite database file. Default: ./data
-data_dir = "./data"
-
-# Directory for uploaded media files. Default: ./media
-media_dir = "./media"
+# Used in the RSS feed description and meta tags
+description  = "A personal publishing space"
 ```
-
-Options set in `grip.toml` are read once at startup. If you change them, restart GRIP.
 
 ---
 
 ## 8. Rebuilding Projections
 
-The `grip rebuild` command drops all projection tables (`articles`, `micro_posts`, `pages`, `media`, `config`) and replays every event in the `events` table from the beginning to reconstruct them.
+The `rebuild` command drops all projection tables (`articles`, `micro_posts`, `pages`, `media`, `config`) and replays every event in the `events` table from the beginning to reconstruct them.
 
 **When to run it:**
 
-- After changing how GRIP processes events in `projections.ts` (e.g. you changed how tags are stored).
-- After changing how Markdown is rendered (e.g. you changed `markdown-it` options) and you want all rendered HTML updated.
-- After adding a new content type and its projection table, to process any historical events of that type that were added before the new code existed.
-- If a projection table gets corrupted or out of sync. The event store is the source of truth; the projections are always reconstructable.
+- After changing event handling in `projections.ts` (e.g. you changed how tags are stored).
+- After changing markdown-it options — rendered HTML in projection tables will be regenerated.
+- After adding a new projection table, to populate it from historical events.
+- If a projection table gets out of sync. The event store is the source of truth; projections are always reconstructable.
 
 **How to run it:**
 
 ```bash
-bun run src/cli/index.ts rebuild
-```
-
-Or, if you have the `grip` binary installed:
-
-```bash
-grip rebuild
-```
-
-GRIP must not be serving requests while a rebuild is running. Stop the service first:
-
-```bash
+# Stop the server first
 systemctl stop grip
-bun run src/cli/index.ts rebuild
+
+bun run cli rebuild
+
+# Restart
 systemctl start grip
 ```
 
-The rebuild time depends on how many events you have. For most personal sites with a few hundred posts, it completes in under a second. The `events` table is never touched — only the projection tables are rebuilt.
+For local development:
+
+```bash
+bun run src/cli/index.ts rebuild
+```
+
+The rebuild touches only projection tables. The `events` table is never modified.
