@@ -1,0 +1,84 @@
+# ─── OS & Editor ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+.vscode/settings.json
+
+# ─── Secrets & Environment ──────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+secrets/
+
+# ─── Node / Bun ─────────────────────────────────────────────────────────────────
+node_modules/
+.npm
+.pnpm-store/
+bun.lockb
+dist/
+build/
+.next/
+.nuxt/
+.svelte-kit/
+out/
+
+# ─── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.eggs/
+
+# ─── Rust ───────────────────────────────────────────────────────────────────────
+target/
+Cargo.lock
+
+# ─── GRIP user data — never commit ──────────────────────────────────────────────
+data/
+media/
+grip.toml
+
+# ─── Database (local-first) ──────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# ─── Logs & Temp ────────────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+.tmp/
+*.tmp
+*.bak
+
+# ─── Generated / Build ──────────────────────────────────────────────────────────
+public/build/
+static/build/
+_site/
+site/
+
+# ─── Coverage & Testing ─────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ─── Claude Code (session state, not project config) ────────────────────────────
+# Keep: .claude/agents/, .claude/CLAUDE.md, .claude/MANIFESTO.md, .claude/settings.json
+# Ignore: runtime/session state
+.claude/agent-memory/**
+!.claude/agent-memory/.gitkeep
+.claude/
+.vscode/

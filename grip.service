@@ -1,0 +1,25 @@
+[Unit]
+Description=GRIP personal publishing server
+Documentation=https://github.com/your-username/grip
+After=network.target
+
+[Service]
+Type=simple
+User=grip
+Group=grip
+WorkingDirectory=/opt/grip
+ExecStart=/home/grip/.bun/bin/bun run src/main.ts
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=grip
+
+# Harden the service
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/grip/data /opt/grip/media
+
+[Install]
+WantedBy=multi-user.target

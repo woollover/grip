@@ -1,0 +1,22 @@
+# GRIP Caddyfile example
+# Copy relevant blocks to your Caddyfile and adjust domain names.
+# Caddy handles TLS via Let's Encrypt automatically.
+
+# Public site
+example.com {
+    reverse_proxy localhost:3000
+}
+
+# Author interface — restrict by IP or use a separate subdomain
+author.example.com {
+    reverse_proxy localhost:4000
+
+    # Optionally restrict to your IP only:
+    # @allowed {
+    #     remote_ip 203.0.113.1
+    # }
+    # handle @allowed {
+    #     reverse_proxy localhost:4000
+    # }
+    # respond 403
+}

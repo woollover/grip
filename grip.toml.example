@@ -1,0 +1,27 @@
+# GRIP Configuration
+# Copy this file to grip.toml and edit it.
+# grip.toml is gitignored — this example file is versioned.
+
+[server]
+# Port for the public-facing site (proxied by Caddy)
+public_port  = 3000
+
+# Port for the author interface (proxied by Caddy, restricted access)
+author_port  = 4000
+
+# Your domain, used in RSS feed URLs and session cookie settings
+domain       = "example.com"
+
+[data]
+# Path to the SQLite database file (will be created if it doesn't exist)
+db_path      = "./data/grip.sqlite"
+
+# Directory where uploaded media files are stored
+media_path   = "./media"
+
+[site]
+# Displayed in the site header and RSS feed title
+title        = "My GRIP"
+
+# Brief description used in the RSS feed and meta tags
+description  = "A personal publishing space"
