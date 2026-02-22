@@ -150,15 +150,6 @@ cd grip
 bun install
 ```
 
-### Vendor static assets
-
-PicoCSS and HTMX are served locally — no CDN. Download them once:
-
-```sh
-curl -fsSL https://unpkg.com/@picocss/pico@2/css/pico.min.css -o public/static/pico.min.css
-curl -fsSL https://unpkg.com/htmx.org@2/dist/htmx.min.js -o public/static/htmx.min.js
-```
-
 ### Setup
 
 Run the interactive setup wizard once to configure your site and set your passphrase:
