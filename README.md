@@ -139,55 +139,80 @@ Install [Bun](https://bun.sh):
 
 ```sh
 curl -fsSL https://bun.sh/install | bash
+export PATH="$HOME/.bun/bin:$PATH"
 ```
 
 ### Install
 
 ```sh
-git clone https://github.com/yourname/grip.git
+git clone https://github.com/woollover/grip.git
 cd grip
 bun install
 ```
 
-### Setup
+### Vendor static assets
 
-Run setup once to initialize the database and create your passphrase:
+PicoCSS and HTMX are served locally — no CDN. Download them once:
 
 ```sh
-bun run grip setup
+curl -fsSL https://unpkg.com/@picocss/pico@2/css/pico.min.css -o public/static/pico.min.css
+curl -fsSL https://unpkg.com/htmx.org@2/dist/htmx.min.js -o public/static/htmx.min.js
 ```
 
-This will:
-- Create `grip.db` with the event store and projection tables
-- Prompt you to set your author passphrase
-- Write a default configuration file
+### Setup
+
+Run the interactive setup wizard once to configure your site and set your passphrase:
+
+```sh
+bun run cli setup
+```
+
+The wizard walks through four steps:
+1. **Site identity** — title, description, domain (with sensible defaults)
+2. **Server ports** — public site (default 3000) and author interface (default 4000)
+3. **Passphrase** — hashed with bcrypt, never stored in plain text
+4. **Confirm** — review and apply
+
+This creates `data/grip.sqlite` (your database) and `grip.toml` (your config). Both are gitignored.
 
 ### Serve
 
 ```sh
-bun run grip serve
+bun start
 ```
 
 - Public site: http://localhost:3000
-- Author interface: http://localhost:4000
+- Author interface: http://localhost:4000 — log in with the passphrase you set
 
 ### Publish a post
 
-Write a Markdown file, then:
+Write a Markdown file with optional front matter, then:
 
 ```sh
-bun run grip post my-article.md
+bun run cli post my-article.md
 ```
 
-The file is read, an event is written to the store, projections update, and the post appears on the public server.
+Front matter (optional):
+
+```md
+---
+title: My First Post
+slug: my-first-post
+tags: writing, notes
+---
+
+Your content here.
+```
+
+The post is saved as a draft. Log in to the author interface at http://localhost:4000 to publish it.
 
 ### Publish a micronote
 
 ```sh
-bun run grip micro "Had a good thought today. Writing it down."
+bun run cli micro "Had a good thought today. Writing it down."
 ```
 
-Short notes, no file required.
+Short notes, no file required. Published immediately.
 
 ---
 
@@ -195,32 +220,31 @@ Short notes, no file required.
 
 | Command | Description |
 |---|---|
-| `grip setup` | Initialize the database, set passphrase, write config |
-| `grip serve` | Start both public (3000) and author (4000) servers |
-| `grip post <file.md>` | Publish a long-form post from a Markdown file |
-| `grip micro "text"` | Publish a short micronote |
-| `grip rebuild` | Rebuild all projection tables from the event store |
-| `grip status` | Print system status: event count, post count, server state |
+| `bun run cli setup` | Interactive wizard: configure site, set passphrase, init database |
+| `bun start` | Start both public (:3000) and author (:4000) servers |
+| `bun run cli post <file.md>` | Create an article from a Markdown file (saved as draft) |
+| `bun run cli micro "text"` | Publish a micronote immediately |
+| `bun run cli rebuild` | Rebuild all projection tables by replaying the event store |
+| `bun run cli status` | Print the last 20 events with type, ID and timestamp |
 
 ---
 
 ## Production Deployment
 
-For a production setup you will need:
+For a production setup you need a Linux server, a domain name, and Caddy for TLS.
 
-1. A Linux server (VPS, home server, etc.)
-2. A domain name pointing at it
-3. Caddy installed for TLS termination
-
-A Caddy config (`Caddyfile`) and a systemd unit file (`grip.service`) are provided in the `deploy/` directory. Copy, adjust the domain name, and enable the service:
+GRIP ships with a one-command installer that handles everything up to the setup wizard:
 
 ```sh
-sudo cp deploy/grip.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now grip
+curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh \
+  | sudo bash -s https://github.com/woollover/grip
 ```
 
-Caddy handles HTTPS automatically via Let's Encrypt. The author server (4000) should never be exposed in the Caddy config — it is for localhost access only.
+Then run the wizard and configure Caddy. See [`docs/deploy.md`](docs/deploy.md) for the full step-by-step guide.
+
+Deployment files at the project root:
+- `grip.service` — systemd unit file
+- `Caddyfile.example` — Caddy reverse proxy config
 
 ---
 
