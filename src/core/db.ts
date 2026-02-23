@@ -76,5 +76,28 @@ function initSchema(db: Database): void {
       key          TEXT PRIMARY KEY,
       value        TEXT NOT NULL
     ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS ap_followers (
+      actor_uri    TEXT PRIMARY KEY,
+      inbox_url    TEXT NOT NULL,
+      followed_at  INTEGER NOT NULL
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS ap_keys (
+      id           TEXT PRIMARY KEY,
+      public_pem   TEXT NOT NULL,
+      private_pem  TEXT NOT NULL,
+      created_at   INTEGER NOT NULL
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS ap_replies (
+      id           TEXT PRIMARY KEY,
+      note_id      TEXT NOT NULL,
+      actor_uri    TEXT NOT NULL,
+      actor_name   TEXT NOT NULL,
+      content      TEXT NOT NULL,
+      published_at INTEGER NOT NULL,
+      status       TEXT NOT NULL DEFAULT 'visible'
+    ) STRICT;
   `);
 }

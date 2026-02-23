@@ -7,7 +7,13 @@ import { renderArticlesList, renderArticle } from './routes/articles';
 import { renderMicroList } from './routes/micro';
 import { renderPage } from './routes/pages';
 import { serveMedia } from './routes/media';
+<<<<<<< Updated upstream
 import { renderRss } from './routes/rss';
+=======
+import { renderRssAll, renderRssArticles, renderRssMicro } from './routes/rss';
+import { mountApRoutes } from '../../activitypub/routes';
+import type { ApConfig } from '../../activitypub/config';
+>>>>>>> Stashed changes
 
 function getSiteConfig(db: Database): { title: string; description: string; domain: string } {
   const get = (key: string, fallback: string) => {
@@ -34,7 +40,7 @@ function notFound(siteTitle: string): Response {
   );
 }
 
-export function createPublicApp(db: Database, port: number): Elysia {
+export function createPublicApp(db: Database, port: number, apCfg?: ApConfig | null): Elysia {
   const app = new Elysia({ name: 'public' });
 
   // Static files (PicoCSS, HTMX vendored)
@@ -65,7 +71,7 @@ export function createPublicApp(db: Database, port: number): Elysia {
 
   app.get('/micro', () => {
     const { title } = getSiteConfig(db);
-    return html(renderMicroList(db, title));
+    return html(renderMicroList(db, title, apCfg));
   });
 
   app.get('/pages/:slug', ({ params }) => {
@@ -87,6 +93,10 @@ export function createPublicApp(db: Database, port: number): Elysia {
       headers: { 'Content-Type': 'application/rss+xml; charset=utf-8' },
     });
   });
+
+  if (apCfg) {
+    mountApRoutes(app, db, apCfg);
+  }
 
   return app;
 }

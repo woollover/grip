@@ -14,11 +14,18 @@ import { renderMicroIndex, handleMicroCreate } from './routes/micro';
 import { renderPagesIndex, renderPageNew, handlePageCreate, renderPageEdit, handlePageRevise, handlePagePublish } from './routes/pages';
 import { renderMediaIndex, handleMediaUpload, handleMediaUploadJson } from './routes/media';
 import { serveMedia } from '../public/routes/media';
+<<<<<<< Updated upstream
 import { renderSettings, renderThemeSettings, handleSiteConfigUpdate, handleThemeChange } from './routes/settings';
+=======
+import { renderSettings, handleSiteConfigUpdate, handleThemeChange } from './routes/settings';
+import { authorLayout } from './routes/layout';
+import type { ApConfig } from '../../activitypub/config';
+import { deliverNewPost } from '../../activitypub/delivery';
+>>>>>>> Stashed changes
 
 const SESSION_COOKIE = 'grip_session';
 
-export function createAuthorApp(db: Database, port: number): Elysia {
+export function createAuthorApp(db: Database, port: number, apCfg?: ApConfig | null): Elysia {
   const store = new EventStore(db);
 
   const app = new Elysia({ name: 'author' });
@@ -161,6 +168,19 @@ export function createAuthorApp(db: Database, port: number): Elysia {
     const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
     if (guard) return guard;
     handleMicroCreate(db, store, body as any);
+
+    // Fire-and-forget AP delivery for the newly created post
+    if (apCfg) {
+      const latest = db.prepare(
+        "SELECT id, body_html, body_md, created_at FROM micro_posts WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
+      ).get() as { id: string; body_html: string; body_md: string; created_at: number } | null;
+      if (latest) {
+        deliverNewPost(db, apCfg, latest).catch((err) => {
+          console.error('[activitypub] Delivery error:', err);
+        });
+      }
+    }
+
     return new Response(null, { status: 302, headers: { Location: '/micro' } });
   });
 
@@ -247,6 +267,55 @@ export function createAuthorApp(db: Database, port: number): Elysia {
     handleThemeChange(db, store, body as any);
     return new Response(null, { status: 302, headers: { Location: '/settings/theme' } });
   });
+
+  // ── Replies (ActivityPub) ───────────────────────────────────────────────────
+  if (apCfg?.acceptReplies) {
+    app.get('/replies', ({ cookie }) => {
+      const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+      if (guard) return guard;
+
+      const replies = db.prepare(
+        'SELECT id, note_id, actor_uri, actor_name, content, published_at, status FROM ap_replies ORDER BY published_at DESC'
+      ).all() as { id: string; note_id: string; actor_uri: string; actor_name: string; content: string; published_at: number; status: string }[];
+
+      const rows = replies.map(r => {
+        const truncated = r.content.length > 100 ? r.content.slice(0, 100) + '...' : r.content;
+        const action = r.status === 'visible'
+          ? `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline secondary" style="padding:0.2rem 0.6rem">Hide</button></form>`
+          : `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline" style="padding:0.2rem 0.6rem">Show</button></form>`;
+        return `<tr>
+          <td><code>${r.note_id.slice(0, 8)}</code></td>
+          <td><a href="${r.actor_uri}" rel="noopener noreferrer" target="_blank">${r.actor_name}</a></td>
+          <td>${truncated}</td>
+          <td><small>${new Date(r.published_at).toISOString()}</small></td>
+          <td>${r.status}</td>
+          <td>${action}</td>
+        </tr>`;
+      }).join('');
+
+      const content = `
+        <h2>Replies</h2>
+        ${replies.length === 0 ? '<p>No replies yet.</p>' : `
+        <table>
+          <thead><tr><th>Post</th><th>Author</th><th>Content</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`}
+      `;
+      return html(authorLayout('Replies', content, db));
+    });
+
+    app.post('/replies/:id/toggle', ({ params, cookie }) => {
+      const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+      if (guard) return guard;
+
+      const row = db.prepare('SELECT status FROM ap_replies WHERE id = ?').get(params.id) as { status: string } | null;
+      if (row) {
+        const newStatus = row.status === 'visible' ? 'hidden' : 'visible';
+        db.prepare('UPDATE ap_replies SET status = ? WHERE id = ?').run(newStatus, params.id);
+      }
+      return new Response(null, { status: 302, headers: { Location: '/replies' } });
+    });
+  }
 
   return app;
 }
