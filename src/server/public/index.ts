@@ -9,7 +9,7 @@ import { renderPage } from "./routes/pages";
 import { serveMedia } from "./routes/media";
 import { mountApRoutes } from "../../activitypub/routes";
 import type { ApConfig } from "../../activitypub/config";
-import { renderRss } from "./routes/rss";
+import { renderRssAll } from "./routes/rss";
 
 function getSiteConfig(db: Database): {
   title: string;
@@ -98,7 +98,7 @@ export function createPublicApp(
 
   app.get("/rss.xml", () => {
     const { title, description, domain } = getSiteConfig(db);
-    return new Response(renderRss(db, domain, title, description), {
+    return new Response(renderRssAll(db, domain, title, description), {
       headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
     });
   });
