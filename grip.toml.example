@@ -25,3 +25,9 @@ title        = "My GRIP"
 
 # Brief description used in the RSS feed and meta tags
 description  = "A personal publishing space"
+
+# [activitypub]
+# Make your micro-posts followable from Mastodon and other fediverse apps.
+# enabled        = true
+# username       = "me"          # your handle will be @me@yourdomain.com
+# accept_replies = false         # set to true to collect fediverse replies as comments

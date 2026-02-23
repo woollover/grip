@@ -75,6 +75,11 @@ GRIP favors clarity and durability over clever abstractions. The formats it uses
 - Projections rebuilt from events at any time (`grip rebuild`)
 - If a projection table is corrupted or schema changes, rebuild from source of truth
 
+**Syndication**
+- RSS feeds for all content, articles only, or micro-posts only (`/rss.xml`, `/articles/rss.xml`, `/micro/rss.xml`)
+- ActivityPub federation — make your micro-posts followable from Mastodon and the fediverse (opt-in, see [`docs/activitypub.md`](docs/activitypub.md))
+- Optional fediverse reply collection (disabled by default, owner-moderated)
+
 **Operations**
 - Single binary runtime: Bun
 - `grip status` to inspect the system state
@@ -233,6 +238,8 @@ curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh \
 
 Then run the wizard and configure Caddy. See [`docs/deploy.md`](docs/deploy.md) for the full step-by-step guide.
 
+To enable fediverse federation after deploying, see [`docs/activitypub.md`](docs/activitypub.md).
+
 Deployment files at the project root:
 - `grip.service` — systemd unit file
 - `Caddyfile.example` — Caddy reverse proxy config
@@ -251,12 +258,11 @@ GRIP is currently a proof of concept. It is functional but not battle-hardened.
 - Theme presets
 
 **What is not yet production-ready:**
-- No automated backup tooling (back up `grip.db` yourself — it is just a file)
-- No media/image handling beyond inline Markdown
-- No RSS/Atom feed (planned)
+- No automated backup tooling (back up `data/grip.sqlite` yourself — it is just a file)
 - No search
 - Error handling is minimal in the current build
 - No test suite beyond manual verification
+- ActivityPub: does not sign GET requests ("authorized fetch" mode on some Mastodon instances)
 
 Use it. Break it. Fix it. It is yours.
 

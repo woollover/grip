@@ -2,6 +2,7 @@ import { hashSync } from 'bcryptjs';
 import { existsSync, writeFileSync, mkdirSync, readSync } from 'fs';
 import { execSync } from 'child_process';
 import { getDb } from '../core/db';
+import { ensureKeyPair } from '../activitypub/keys';
 
 // ── ANSI helpers ──────────────────────────────────────────────────────────────
 const c = {
@@ -79,21 +80,24 @@ export async function setup(_args: string[]): Promise<void> {
   }
 
   const defaults = {
-    title:       existing.site?.title          ?? 'My GRIP',
-    description: existing.site?.description    ?? 'A personal publishing space',
-    domain:      existing.server?.domain       ?? 'localhost',
-    publicPort:  String(existing.server?.public_port  ?? 3000),
-    authorPort:  String(existing.server?.author_port  ?? 4000),
+    title:          existing.site?.title              ?? 'My GRIP',
+    description:    existing.site?.description        ?? 'A personal publishing space',
+    domain:         existing.server?.domain           ?? 'localhost',
+    publicPort:     String(existing.server?.public_port  ?? 3000),
+    authorPort:     String(existing.server?.author_port  ?? 4000),
+    apEnabled:      existing.activitypub?.enabled     ?? false,
+    apUsername:     existing.activitypub?.username    ?? 'me',
+    apAcceptReplies: existing.activitypub?.accept_replies ?? false,
   };
 
   // ── Step 1: Site identity ─────────────────────────────────────────────────
-  stepHeader(1, 4, 'Site identity');
+  stepHeader(1, 5, 'Site identity');
   const title       = prompt('Site title',       defaults.title);
   const description = prompt('Description',      defaults.description);
   const domain      = prompt('Domain',           defaults.domain);
 
   // ── Step 2: Server ports ─────────────────────────────────────────────────
-  stepHeader(2, 4, 'Server ports');
+  stepHeader(2, 5, 'Server ports');
   p(style('  Public port  — your visitor-facing site.', c.dim));
   p(style('  Author port  — your private writing interface.', c.dim));
   p();
@@ -101,7 +105,7 @@ export async function setup(_args: string[]): Promise<void> {
   const authorPort = parseInt(prompt('Author port', defaults.authorPort), 10) || 4000;
 
   // ── Step 3: Passphrase ────────────────────────────────────────────────────
-  stepHeader(3, 4, 'Passphrase');
+  stepHeader(3, 5, 'Passphrase');
   p(style('  Protects the author interface. Min 8 characters.', c.dim));
   p();
 
@@ -123,13 +127,38 @@ export async function setup(_args: string[]): Promise<void> {
     break;
   }
 
-  // ── Step 4: Review & confirm ─────────────────────────────────────────────
-  stepHeader(4, 4, 'Review & confirm');
+  // ── Step 4: ActivityPub ───────────────────────────────────────────────────
+  stepHeader(4, 5, 'ActivityPub (fediverse)');
+  p(style('  Make your micro-posts followable from Mastodon and the fediverse.', c.dim));
+  p(style('  You can enable this later by editing grip.toml.', c.dim));
+  p();
+
+  const apEnabled = confirm('Enable ActivityPub?', defaults.apEnabled);
+
+  let apUsername = defaults.apUsername;
+  let apAcceptReplies = defaults.apAcceptReplies;
+
+  if (apEnabled) {
+    p();
+    apUsername = prompt('Username', defaults.apUsername);
+    p(style(`  → Your fediverse handle will be @${apUsername}@${domain}`, c.cyan));
+    p();
+    apAcceptReplies = confirm('Accept replies as comments?', defaults.apAcceptReplies);
+    if (apAcceptReplies) {
+      p(style('  Replies will appear on /micro. Moderate them in the author panel.', c.dim));
+    }
+  }
+
+  // ── Step 5: Review & confirm ─────────────────────────────────────────────
+  stepHeader(5, 5, 'Review & confirm');
   p(`  ${style('Site title ', c.dim)}   ${style(title, c.bold)}`);
   p(`  ${style('Description', c.dim)}   ${description}`);
   p(`  ${style('Domain     ', c.dim)}   ${domain}`);
   p(`  ${style('Public port', c.dim)}   :${publicPort}`);
   p(`  ${style('Author port', c.dim)}   :${authorPort}`);
+  if (apEnabled) {
+    p(`  ${style('ActivityPub', c.dim)}   @${apUsername}@${domain}${apAcceptReplies ? ' (replies on)' : ''}`);
+  }
   p();
 
   if (!confirm('Write config and initialise database?')) {
@@ -139,6 +168,13 @@ export async function setup(_args: string[]): Promise<void> {
 
   // ── Write everything ──────────────────────────────────────────────────────
   p();
+
+  const apSection = apEnabled ? `
+[activitypub]
+enabled        = true
+username       = "${apUsername}"
+accept_replies = ${apAcceptReplies}
+` : '';
 
   const tomlContent = `[server]
 public_port  = ${publicPort}
@@ -152,7 +188,7 @@ media_path   = "./media"
 [site]
 title        = "${title}"
 description  = "${description}"
-`;
+${apSection}`;
   writeFileSync(tomlPath, tomlContent, 'utf8');
   p('  ' + style('✓', c.green) + '  grip.toml written');
 
@@ -166,6 +202,11 @@ description  = "${description}"
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('domain', domain);
   p('  ' + style('✓', c.green) + '  Config saved');
 
+  if (apEnabled) {
+    await ensureKeyPair(db);
+    p('  ' + style('✓', c.green) + '  ActivityPub key pair generated');
+  }
+
   mkdirSync('./media', { recursive: true });
   p('  ' + style('✓', c.green) + '  Media directory ready');
 
@@ -177,6 +218,9 @@ description  = "${description}"
   p();
   p(`  ${style('Public site', c.dim)}   http://localhost:${publicPort}`);
   p(`  ${style('Author UI  ', c.dim)}   http://localhost:${authorPort}`);
+  if (apEnabled) {
+    p(`  ${style('Fediverse  ', c.dim)}   @${apUsername}@${domain}`);
+  }
   p();
   p('  ' + style('bun run src/main.ts', c.cyan + c.bold));
   p();
