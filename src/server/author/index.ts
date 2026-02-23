@@ -12,7 +12,8 @@ import { renderDashboard } from './routes/dashboard';
 import { renderArticlesIndex, renderArticleNew, handleArticleCreate, renderArticleEdit, handleArticleRevise, handleArticlePublish, handleArticleUnpublish } from './routes/articles';
 import { renderMicroIndex, handleMicroCreate } from './routes/micro';
 import { renderPagesIndex, renderPageNew, handlePageCreate, renderPageEdit, handlePageRevise, handlePagePublish } from './routes/pages';
-import { renderMediaIndex, handleMediaUpload } from './routes/media';
+import { renderMediaIndex, handleMediaUpload, handleMediaUploadJson } from './routes/media';
+import { serveMedia } from '../public/routes/media';
 import { renderSettings, handleSiteConfigUpdate, handleThemeChange } from './routes/settings';
 
 const SESSION_COOKIE = 'grip_session';
@@ -200,6 +201,21 @@ export function createAuthorApp(db: Database, port: number): Elysia {
   // ── Media ─────────────────────────────────────────────────────────────────────
   app.get('/media', ({ cookie }) => {
     return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderMediaIndex(db));
+  });
+
+  app.post('/media/upload', async ({ body, cookie }) => {
+    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    if (guard) return guard;
+    const result = await handleMediaUploadJson(db, store, body as any);
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  app.get('/media/:id', ({ params }) => {
+    const response = serveMedia(db, params.id);
+    if (!response) return new Response('Not found', { status: 404 });
+    return response;
   });
 
   app.post('/media', async ({ body, cookie }) => {

@@ -3,6 +3,7 @@ import type { EventStore } from '../../../core/events';
 import { applyEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
+import { editorImageWidget } from './media';
 
 interface Article {
   id: string; slug: string; title: string; body_md: string;
@@ -54,6 +55,7 @@ export function renderArticleNew(): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview"></textarea>
       </label>
+      ${editorImageWidget()}
       <div class="preview-pane" id="preview"><em>Preview will appear here…</em></div>
       <button type="submit">Save draft</button>
       <a href="/articles" role="button" class="outline secondary">Cancel</a>
@@ -92,6 +94,7 @@ export function renderArticleEdit(db: Database, id: string): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview">${article.body_md}</textarea>
       </label>
+      ${editorImageWidget()}
       <div class="preview-pane" id="preview">Loading preview…</div>
       <button type="submit">Save revision</button>
     </form>

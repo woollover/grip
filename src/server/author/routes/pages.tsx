@@ -3,6 +3,7 @@ import type { EventStore } from '../../../core/events';
 import { applyEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
+import { editorImageWidget } from './media';
 
 interface Page {
   id: string; slug: string; title: string; body_md: string;
@@ -52,6 +53,7 @@ export function renderPageNew(): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview"></textarea>
       </label>
+      ${editorImageWidget()}
       <div class="preview-pane" id="preview"><em>Preview here…</em></div>
       <button type="submit">Save draft</button>
     </form>
@@ -87,6 +89,7 @@ export function renderPageEdit(db: Database, id: string): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview">${page.body_md}</textarea>
       </label>
+      ${editorImageWidget()}
       <div class="preview-pane" id="preview">Loading preview…</div>
       <button type="submit">Save revision</button>
     </form>

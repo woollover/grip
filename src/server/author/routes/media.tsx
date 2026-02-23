@@ -37,6 +37,75 @@ export function renderMediaIndex(db: Database): string {
   return authorLayout('Media', content, db);
 }
 
+export async function handleMediaUploadJson(
+  db: Database, store: EventStore,
+  body: { file: File; altText?: string }
+): Promise<{ id: string; url: string; alt: string }> {
+  const mediaPath = `${process.cwd()}/media`;
+  mkdirSync(mediaPath, { recursive: true });
+
+  const id = ulid();
+  const ext = body.file.name.split('.').pop() ?? '';
+  const filename = `${id}.${ext}`;
+  const filePath = `${mediaPath}/${filename}`;
+
+  await Bun.write(filePath, await body.file.arrayBuffer());
+
+  const alt = body.altText?.trim() || body.file.name.replace(/\.[^.]+$/, '');
+  const event = {
+    type: 'MediaUploaded' as const,
+    id, filename: body.file.name,
+    mimeType: body.file.type,
+    path: filePath,
+    altText: alt,
+  };
+  store.append(event);
+  applyEvent(db, event, Date.now());
+
+  return { id, url: `/media/${id}`, alt };
+}
+
+export function editorImageWidget(): string {
+  return `
+    <div style="margin-bottom:0.5rem">
+      <button type="button" id="insert-image-btn" class="outline"
+              style="padding:0.3rem 0.8rem;font-size:0.875rem">
+        📎 Insert image
+      </button>
+      <input type="file" id="image-file-input" accept="image/*" style="display:none">
+    </div>
+    <script>
+    (function() {
+      const btn      = document.getElementById('insert-image-btn');
+      const input    = document.getElementById('image-file-input');
+      const textarea = document.querySelector('textarea[name="body"]');
+      btn.addEventListener('click', () => input.click());
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        btn.disabled = true;
+        btn.textContent = 'Uploading\u2026';
+        const form = new FormData();
+        form.append('file', file);
+        form.append('altText', file.name.replace(/\\.[^.]+$/, ''));
+        try {
+          const res  = await fetch('/media/upload', { method: 'POST', body: form });
+          const data = await res.json();
+          const snippet = '![' + data.alt + '](/media/' + data.id + ')';
+          const s = textarea.selectionStart, e = textarea.selectionEnd;
+          textarea.value = textarea.value.slice(0, s) + snippet + textarea.value.slice(e);
+          textarea.selectionStart = textarea.selectionEnd = s + snippet.length;
+          textarea.dispatchEvent(new KeyboardEvent('keyup'));
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '\uD83D\uDCCE Insert image';
+          input.value = '';
+        }
+      });
+    })();
+    </script>`;
+}
+
 export async function handleMediaUpload(
   db: Database, store: EventStore,
   body: { file: File; altText?: string }
