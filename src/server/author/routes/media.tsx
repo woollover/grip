@@ -67,50 +67,19 @@ export async function handleMediaUploadJson(
 
 export function editorImageWidget(): string {
   return `
-    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;flex-wrap:wrap">
+    <div style="margin-bottom:0.5rem">
       <button type="button" id="insert-image-btn" class="outline"
-              style="padding:0.3rem 0.8rem;font-size:0.875rem;margin:0">
+              style="padding:0.3rem 0.8rem;font-size:0.875rem">
         📎 Insert image
       </button>
       <input type="file" id="image-file-input" accept="image/*" style="display:none">
-      <div id="align-group"
-           style="display:inline-flex;border:1px solid var(--pico-primary);border-radius:var(--pico-border-radius);overflow:hidden;font-size:0.8rem">
-        <button type="button" data-align="left"
-                style="border:none;padding:0.25rem 0.65rem;cursor:pointer;background:transparent">
-          ⇤ Left
-        </button>
-        <button type="button" data-align="center"
-                style="border:none;border-left:1px solid var(--pico-primary);border-right:1px solid var(--pico-primary);padding:0.25rem 0.65rem;cursor:pointer;background:var(--pico-primary);color:var(--pico-primary-inverse)">
-          ↔ Center
-        </button>
-        <button type="button" data-align="right"
-                style="border:none;padding:0.25rem 0.65rem;cursor:pointer;background:transparent">
-          Right ⇥
-        </button>
-      </div>
     </div>
     <script>
     (function() {
       const btn      = document.getElementById('insert-image-btn');
       const input    = document.getElementById('image-file-input');
       const textarea = document.querySelector('textarea[name="body"]');
-      const group    = document.getElementById('align-group');
-      let align = 'center';
-
-      group.querySelectorAll('button').forEach(b => {
-        b.addEventListener('click', () => {
-          align = b.dataset.align;
-          group.querySelectorAll('button').forEach(x => {
-            x.style.background = 'transparent';
-            x.style.color = '';
-          });
-          b.style.background = 'var(--pico-primary)';
-          b.style.color = 'var(--pico-primary-inverse)';
-        });
-      });
-
       btn.addEventListener('click', () => input.click());
-
       input.addEventListener('change', async () => {
         const file = input.files[0];
         if (!file) return;
@@ -122,6 +91,7 @@ export function editorImageWidget(): string {
         try {
           const res  = await fetch('/media/upload', { method: 'POST', body: form });
           const data = await res.json();
+          const align = document.getElementById('img-align-picker')?.dataset.align ?? 'center';
           const snippet = buildSnippet(data.alt, data.id, align);
           const s = textarea.selectionStart, e = textarea.selectionEnd;
           textarea.value = textarea.value.slice(0, s) + snippet + textarea.value.slice(e);
@@ -133,7 +103,6 @@ export function editorImageWidget(): string {
           input.value = '';
         }
       });
-
       function buildSnippet(alt, id, align) {
         const src = '/media/' + id;
         if (align === 'left')

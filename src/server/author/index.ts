@@ -14,7 +14,7 @@ import { renderMicroIndex, handleMicroCreate } from './routes/micro';
 import { renderPagesIndex, renderPageNew, handlePageCreate, renderPageEdit, handlePageRevise, handlePagePublish } from './routes/pages';
 import { renderMediaIndex, handleMediaUpload, handleMediaUploadJson } from './routes/media';
 import { serveMedia } from '../public/routes/media';
-import { renderSettings, handleSiteConfigUpdate, handleThemeChange } from './routes/settings';
+import { renderSettings, renderThemeSettings, handleSiteConfigUpdate, handleThemeChange } from './routes/settings';
 
 const SESSION_COOKIE = 'grip_session';
 
@@ -230,6 +230,10 @@ export function createAuthorApp(db: Database, port: number): Elysia {
     return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderSettings(db));
   });
 
+  app.get('/settings/theme', ({ cookie }) => {
+    return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderThemeSettings(db));
+  });
+
   app.post('/settings/site', ({ body, cookie }) => {
     const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
     if (guard) return guard;
@@ -241,7 +245,7 @@ export function createAuthorApp(db: Database, port: number): Elysia {
     const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
     if (guard) return guard;
     handleThemeChange(db, store, body as any);
-    return new Response(null, { status: 302, headers: { Location: '/settings' } });
+    return new Response(null, { status: 302, headers: { Location: '/settings/theme' } });
   });
 
   return app;
