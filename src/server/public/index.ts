@@ -7,7 +7,7 @@ import { renderArticlesList, renderArticle } from './routes/articles';
 import { renderMicroList } from './routes/micro';
 import { renderPage } from './routes/pages';
 import { serveMedia } from './routes/media';
-import { renderRss } from './routes/rss';
+import { renderRssAll, renderRssArticles, renderRssMicro } from './routes/rss';
 
 function getSiteConfig(db: Database): { title: string; description: string; domain: string } {
   const get = (key: string, fallback: string) => {
@@ -81,11 +81,21 @@ export function createPublicApp(db: Database, port: number): Elysia {
     return response;
   });
 
+  const rssHeaders = { 'Content-Type': 'application/rss+xml; charset=utf-8' };
+
   app.get('/rss.xml', () => {
     const { title, description, domain } = getSiteConfig(db);
-    return new Response(renderRss(db, domain, title, description), {
-      headers: { 'Content-Type': 'application/rss+xml; charset=utf-8' },
-    });
+    return new Response(renderRssAll(db, domain, title, description), { headers: rssHeaders });
+  });
+
+  app.get('/articles/rss.xml', () => {
+    const { title, description, domain } = getSiteConfig(db);
+    return new Response(renderRssArticles(db, domain, title, description), { headers: rssHeaders });
+  });
+
+  app.get('/micro/rss.xml', () => {
+    const { title, description, domain } = getSiteConfig(db);
+    return new Response(renderRssMicro(db, domain, title, description), { headers: rssHeaders });
   });
 
   return app;

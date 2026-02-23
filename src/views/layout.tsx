@@ -39,7 +39,11 @@ export function publicLayout(opts: LayoutOptions, content: string): string {
     ${content}
   </main>
   <footer class="container">
-    <small><a href="/rss.xml">RSS</a></small>
+    <small>
+      <a href="/rss.xml">RSS</a> ·
+      <a href="/articles/rss.xml">Articles</a> ·
+      <a href="/micro/rss.xml">Notes</a>
+    </small>
   </footer>
 </body>
 </html>`;
