@@ -3,7 +3,7 @@ import MarkdownIt from 'markdown-it';
 import type { GripEvent } from './event-types';
 import type { StoredEvent } from './events';
 
-const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
 export function renderMd(src: string): string {
   return md.render(src);
