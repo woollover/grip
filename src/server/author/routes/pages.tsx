@@ -10,6 +10,35 @@ interface Page {
   body_html: string; status: string; created_at: number; updated_at: number;
 }
 
+function alignPicker(): string {
+  return `
+    <div id="img-align-picker" data-align="center"
+         style="display:inline-flex;border:1px solid var(--pico-primary);border-radius:var(--pico-border-radius);overflow:hidden;font-size:0.8rem;margin-bottom:0.5rem">
+      <button type="button" onclick="setImgAlign(this,'left')"
+              style="border:none;padding:0.25rem 0.65rem;cursor:pointer;background:transparent">
+        ⇤ Left
+      </button>
+      <button type="button" onclick="setImgAlign(this,'center')"
+              style="border:none;border-left:1px solid var(--pico-primary);border-right:1px solid var(--pico-primary);padding:0.25rem 0.65rem;cursor:pointer;background:var(--pico-primary);color:var(--pico-primary-inverse)">
+        ↔ Center
+      </button>
+      <button type="button" onclick="setImgAlign(this,'right')"
+              style="border:none;padding:0.25rem 0.65rem;cursor:pointer;background:transparent">
+        Right ⇥
+      </button>
+    </div>
+    <script>
+    function setImgAlign(btn, align) {
+      document.getElementById('img-align-picker').dataset.align = align;
+      document.querySelectorAll('#img-align-picker button').forEach(b => {
+        b.style.background = 'transparent'; b.style.color = '';
+      });
+      btn.style.background = 'var(--pico-primary)';
+      btn.style.color = 'var(--pico-primary-inverse)';
+    }
+    </script>`;
+}
+
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
@@ -53,6 +82,7 @@ export function renderPageNew(): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview"></textarea>
       </label>
+      ${alignPicker()}
       ${editorImageWidget()}
       <div class="preview-pane" id="preview"><em>Preview here…</em></div>
       <button type="submit">Save draft</button>
@@ -89,6 +119,7 @@ export function renderPageEdit(db: Database, id: string): string {
           hx-post="/preview" hx-trigger="keyup changed delay:300ms"
           hx-target="#preview">${page.body_md}</textarea>
       </label>
+      ${alignPicker()}
       ${editorImageWidget()}
       <div class="preview-pane" id="preview">Loading preview…</div>
       <button type="submit">Save revision</button>
