@@ -13,6 +13,7 @@ import {
   verifySession,
   verifyPassphrase,
 } from "./auth";
+import { renderLoginPage } from "./routes/login";
 import { renderDashboard } from "./routes/dashboard";
 import {
   renderArticlesIndex,
@@ -23,7 +24,11 @@ import {
   handleArticlePublish,
   handleArticleUnpublish,
 } from "./routes/articles";
-import { renderMicroIndex, handleMicroCreate } from "./routes/micro";
+import {
+  renderMicroIndex,
+  handleMicroCreate,
+  handleMicroRetract,
+} from "./routes/micro";
 import {
   renderPagesIndex,
   renderPageNew,
@@ -88,9 +93,7 @@ export function createAuthorApp(
     ) {
       return Response.redirect("/dashboard", 302);
     }
-    return new Response(renderLoginPage(false, false), {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+    return html(renderLoginPage(false, false));
   });
 
   app.post("/login", async ({ body, request }) => {
@@ -255,6 +258,13 @@ export function createAuthorApp(
     return new Response(null, { status: 302, headers: { Location: "/micro" } });
   });
 
+  app.post("/micro/:id/retract", ({ params, cookie }) => {
+    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    if (guard) return guard;
+    handleMicroRetract(db, store, params.id);
+    return new Response(null, { status: 302, headers: { Location: "/micro" } });
+  });
+
   // ── Pages ─────────────────────────────────────────────────────────────────────
   app.get("/pages", ({ cookie }) => {
     return (
@@ -383,40 +393,56 @@ export function createAuthorApp(
         status: string;
       }[];
 
-      const rows = replies
-        .map((r) => {
-          const truncated =
-            r.content.length > 100
-              ? r.content.slice(0, 100) + "..."
-              : r.content;
-          const action =
-            r.status === "visible"
-              ? `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline secondary" style="padding:0.2rem 0.6rem">Hide</button></form>`
-              : `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline" style="padding:0.2rem 0.6rem">Show</button></form>`;
-          return `<tr>
-          <td><code>${r.note_id.slice(0, 8)}</code></td>
-          <td><a href="${r.actor_uri}" rel="noopener noreferrer" target="_blank">${r.actor_name}</a></td>
-          <td>${truncated}</td>
-          <td><small>${new Date(r.published_at).toISOString()}</small></td>
-          <td>${r.status}</td>
-          <td>${action}</td>
-        </tr>`;
-        })
-        .join("");
+      const content = (
+        <div>
+          <h2>Replies</h2>
+          {replies.length === 0
+            ? <p>No replies yet.</p>
+            : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Post</th><th>Author</th><th>Content</th>
+                    <th>Date</th><th>Status</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {replies.map(r => {
+                    const truncated = r.content.length > 100
+                      ? r.content.slice(0, 100) + '…'
+                      : r.content;
+                    return (
+                      <tr>
+                        <td><code>{r.note_id.slice(0, 8)}</code></td>
+                        <td>
+                          <a href={r.actor_uri} rel="noopener noreferrer" target="_blank">
+                            {r.actor_name}
+                          </a>
+                        </td>
+                        <td>{truncated}</td>
+                        <td><small>{new Date(r.published_at).toISOString()}</small></td>
+                        <td>{r.status}</td>
+                        <td>
+                          <form method="POST"
+                            action={`/replies/${encodeURIComponent(r.id)}/toggle`}
+                            style="margin:0">
+                            {r.status === 'visible'
+                              ? <button class="outline secondary" style="padding:0.2rem 0.6rem">Hide</button>
+                              : <button class="outline" style="padding:0.2rem 0.6rem">Show</button>
+                            }
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )
+          }
+        </div>
+      );
 
-      const content = `
-        <h2>Replies</h2>
-        ${
-          replies.length === 0
-            ? "<p>No replies yet.</p>"
-            : `
-        <table>
-          <thead><tr><th>Post</th><th>Author</th><th>Content</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`
-        }
-      `;
-      return html(authorLayout("Replies", content, db));
+      return html(authorLayout('Replies', content, db));
     });
 
     app.post("/replies/:id/toggle", ({ params, cookie }) => {
@@ -443,33 +469,8 @@ export function createAuthorApp(
   return app;
 }
 
-function html(content: string): Response {
+function html(content: JSX.Element): Response {
   return new Response(content, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
-}
-
-function renderLoginPage(badPassword: boolean, lockedOut: boolean): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GRIP — Login</title>
-  <link rel="stylesheet" href="/static/pico.min.css">
-  <link rel="stylesheet" href="/theme.css">
-</head>
-<body>
-  <main class="container" style="max-width:400px;margin-top:4rem">
-    <h1>GRIP</h1>
-    ${lockedOut ? '<p role="alert" style="color:var(--pico-color-red-500)">Too many failed attempts. Try again in 15 minutes.</p>' : ""}
-    ${badPassword ? '<p role="alert" style="color:var(--pico-color-red-500)">Incorrect passphrase.</p>' : ""}
-    <form method="POST" action="/login">
-      <label for="passphrase">Passphrase</label>
-      <input type="password" id="passphrase" name="passphrase" autofocus required>
-      <button type="submit">Enter</button>
-    </form>
-  </main>
-</body>
-</html>`;
 }
