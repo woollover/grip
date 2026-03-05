@@ -83,7 +83,9 @@ export function createAuthorApp(
 
   // ── Login ────────────────────────────────────────────────────────────────────
   app.get("/login", ({ cookie }) => {
-    if (verifySession(db, cookie[SESSION_COOKIE]?.value as string | undefined)) {
+    if (
+      verifySession(db, cookie[SESSION_COOKIE]?.value as string | undefined)
+    ) {
       return Response.redirect("/dashboard", 302);
     }
     return new Response(renderLoginPage(false, false), {
