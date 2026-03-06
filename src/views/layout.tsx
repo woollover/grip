@@ -267,6 +267,10 @@ export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Ele
   const scheme = db ? getColorScheme(db) : 'light';
   const sidebar = db ? buildSidebar(db, activeTag) : null;
 
+  const navPages = db ? (db.prepare(
+    "SELECT title, slug FROM pages WHERE status = 'published' ORDER BY title ASC"
+  ).all() as { title: string; slug: string }[]) : [];
+
   const page = (
     <html lang="en" data-theme={scheme}>
       <head>
@@ -288,6 +292,7 @@ export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Ele
             <ul>
               <li><a href="/articles">Articles</a></li>
               <li><a href="/micro">Notes</a></li>
+              {navPages.map(p => <li><a href={`/pages/${p.slug}`}>{p.title}</a></li>)}
             </ul>
           </nav>
         </header>

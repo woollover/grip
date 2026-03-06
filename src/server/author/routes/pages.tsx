@@ -54,13 +54,13 @@ export function renderPagesIndex(db: Database): JSX.Element {
   return authorLayout('Pages', content, db);
 }
 
-export function renderPageNew(): JSX.Element {
+export function renderPageNew(db: Database): JSX.Element {
   const content = (
     <div>
       <h2>New page</h2>
       <form method="POST" action="/pages">
         <label>Title <input type="text" name="title" required autofocus /></label>
-        <label>Slug <input type="text" name="slug" placeholder="auto-generated" /></label>
+        <label>Slug <input type="text" name="slug" placeholder="auto-generated from title" /></label>
         <label>
           Body (Markdown)
           <textarea name="body" rows="20"
@@ -75,7 +75,7 @@ export function renderPageNew(): JSX.Element {
     </div>
   );
 
-  return authorLayout('New page', content);
+  return authorLayout('New page', content, db);
 }
 
 export function handlePageCreate(
@@ -96,12 +96,18 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
 
   const content = (
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>Edit: {page.title}</h2>
-        <span>Status: <strong>{page.status}</strong></span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2 style="margin:0">Edit: {page.title}</h2>
+        <span style="display:flex;gap:0.75rem;align-items:center;font-size:0.875rem">
+          <span>Status: <strong>{page.status}</strong></span>
+          {page.status === 'published' && (
+            <a href={`http://localhost:3000/pages/${page.slug}`} target="_blank" rel="noopener">View →</a>
+          )}
+        </span>
       </div>
       <form method="POST" action={`/pages/${id}/revise`}>
         <label>Title <input type="text" name="title" value={page.title} required /></label>
+        <label>Slug <input type="text" name="slug" value={page.slug} placeholder="url-slug" /></label>
         <label>
           Body (Markdown)
           <textarea name="body" rows="20"
@@ -116,7 +122,7 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
       <hr />
       {page.status !== 'published'
         ? <form method="POST" action={`/pages/${id}/publish`}><button>Publish</button></form>
-        : <p>Published</p>
+        : <p style="color:var(--pico-muted-color);font-size:0.875rem">Page is published and live.</p>
       }
     </div>
   );
@@ -126,9 +132,9 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
 
 export function handlePageRevise(
   db: Database, store: EventStore, id: string,
-  body: { title?: string; body?: string }
+  body: { title?: string; slug?: string; body?: string }
 ): void {
-  const event = { type: 'PageRevised' as const, id, title: body.title, body: body.body };
+  const event = { type: 'PageRevised' as const, id, title: body.title, slug: body.slug?.trim() || undefined, body: body.body };
   store.append(event);
   applyEvent(db, event, Date.now());
 }

@@ -273,7 +273,7 @@ export function createAuthorApp(
   });
 
   app.get("/pages/new", ({ cookie }) => {
-    return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderPageNew());
+    return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderPageNew(db));
   });
 
   app.post("/pages", ({ body, cookie }) => {
