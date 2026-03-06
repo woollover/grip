@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import MarkdownIt from 'markdown-it';
 import type { GripEvent } from './event-types';
-import type { StoredEvent } from './events';
+import type { StoredEvent, EventStore } from './events';
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
@@ -22,6 +22,11 @@ export function rebuild(db: Database, events: StoredEvent[]): void {
     const event = JSON.parse(stored.payload) as GripEvent;
     applyEvent(db, event, stored.created_at);
   }
+}
+
+export function commitEvent(db: Database, store: EventStore, event: GripEvent): void {
+  store.append(event);
+  applyEvent(db, event, Date.now());
 }
 
 export function applyEvent(db: Database, event: GripEvent, createdAt: number): void {
@@ -87,13 +92,14 @@ export function applyEvent(db: Database, event: GripEvent, createdAt: number): v
     }
     case 'PageRevised': {
       const current = db.prepare('SELECT * FROM pages WHERE id = ?').get(event.id) as
-        { title: string; body_md: string } | null;
+        { title: string; slug: string; body_md: string } | null;
       if (!current) break;
       const newTitle = event.title ?? current.title;
-      const newBody = event.body ?? current.body_md;
+      const newSlug  = event.slug  ?? current.slug;
+      const newBody  = event.body  ?? current.body_md;
       db.prepare(`
-        UPDATE pages SET title = ?, body_md = ?, body_html = ?, updated_at = ? WHERE id = ?
-      `).run(newTitle, newBody, renderMd(newBody), createdAt, event.id);
+        UPDATE pages SET title = ?, slug = ?, body_md = ?, body_html = ?, updated_at = ? WHERE id = ?
+      `).run(newTitle, newSlug, newBody, renderMd(newBody), createdAt, event.id);
       break;
     }
     case 'PagePublished': {

@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
-import { applyEvent } from '../../../core/projections';
+import { commitEvent } from '../../../core/projections';
+import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { editorImageWidget } from './media';
@@ -9,10 +10,6 @@ import { AlignPicker } from './shared';
 interface Page {
   id: string; slug: string; title: string; body_md: string;
   body_html: string; status: string; created_at: number; updated_at: number;
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export function renderPagesIndex(db: Database): JSX.Element {
@@ -85,8 +82,7 @@ export function handlePageCreate(
   const id = ulid();
   const slug = body.slug?.trim() || slugify(body.title);
   const event = { type: 'PageCreated' as const, id, title: body.title, slug, body: body.body };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
   return id;
 }
 
@@ -135,12 +131,10 @@ export function handlePageRevise(
   body: { title?: string; slug?: string; body?: string }
 ): void {
   const event = { type: 'PageRevised' as const, id, title: body.title, slug: body.slug?.trim() || undefined, body: body.body };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
 export function handlePagePublish(db: Database, store: EventStore, id: string): void {
   const event = { type: 'PagePublished' as const, id };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }

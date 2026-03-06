@@ -5,6 +5,7 @@
 import { getDb } from './src/core/db';
 import { EventStore } from './src/core/events';
 import { applyEvent } from './src/core/projections';
+import { slugify } from './src/core/utils';
 import { ulid } from 'ulidx';
 
 const db = getDb('./data/grip.sqlite');
@@ -12,10 +13,6 @@ const store = new EventStore(db);
 
 // Helper: timestamp N days ago
 const daysAgo = (n: number) => Date.now() - n * 86_400_000;
-
-function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
 
 function create(event: Parameters<typeof store.append>[0], ts: number) {
   store.append(event);

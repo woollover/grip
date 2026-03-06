@@ -1,5 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
+import { fmtDate, paginationNav } from '../../../views/shared';
 
 interface Article {
   id: string; slug: string; title: string;
@@ -9,22 +10,6 @@ interface Article {
 
 const PAGE_SIZE = 10;
 
-function paginationNav(page: number, total: number, baseHref: string): JSX.Element {
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  if (totalPages <= 1) return '' as unknown as JSX.Element;
-  const sep = baseHref.includes('?') ? '&' : '?';
-  return (
-    <nav class="pagination">
-      {page > 1
-        ? <a href={`${baseHref}${sep}page=${page - 1}`}>← Newer</a>
-        : <span class="pagination-disabled">← Newer</span>}
-      <span class="pagination-info">Page {page} of {totalPages}</span>
-      {page < totalPages
-        ? <a href={`${baseHref}${sep}page=${page + 1}`}>Older →</a>
-        : <span class="pagination-disabled">Older →</span>}
-    </nav>
-  );
-}
 
 export function renderArticlesList(db: Database, siteTitle: string, tag?: string, page = 1): JSX.Element {
   const rows = db.prepare(`
@@ -41,9 +26,6 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
 
   const total = filtered.length;
   const articles = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const fmt = (ts: number) =>
-    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const baseHref = tag ? `/articles?tag=${encodeURIComponent(tag)}` : '/articles';
 
@@ -66,7 +48,7 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
           const tags: string[] = JSON.parse(a.tags);
           return (
             <li>
-              <span class="post-date">{a.published_at ? fmt(a.published_at) : ''}</span>
+              <span class="post-date">{a.published_at ? fmtDate(a.published_at) : ''}</span>
               <span class="post-title">
                 <a href={`/articles/${a.slug}`}>{a.title}</a>
                 {tags.length > 0 && (
@@ -81,7 +63,7 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
           );
         })}
       </ul>
-      {paginationNav(page, total, baseHref)}
+      {paginationNav(page, total, PAGE_SIZE, baseHref)}
     </div>
   );
 
@@ -96,14 +78,12 @@ export function renderArticle(db: Database, slug: string, siteTitle: string): JS
   if (!article) return null;
 
   const tags: string[] = JSON.parse(article.tags);
-  const fmt = (ts: number) =>
-    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const content = (
     <article>
       <h1 style="margin-top:0;margin-bottom:0.5rem">{article.title}</h1>
       <div class="article-meta">
-        {article.published_at ? <span>{fmt(article.published_at)}</span> : ''}
+        {article.published_at ? <span>{fmtDate(article.published_at)}</span> : ''}
         {tags.map(t => (
           <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag">{t}</a>
         ))}

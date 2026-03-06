@@ -13,7 +13,7 @@ export type GripEvent =
 
   // Static pages
   | { type: 'PageCreated';        id: string; title: string; slug: string; body: string }
-  | { type: 'PageRevised';        id: string; title?: string; body?: string }
+  | { type: 'PageRevised';        id: string; title?: string; slug?: string; body?: string }
   | { type: 'PagePublished';      id: string }
   | { type: 'PageUnpublished';    id: string }
 

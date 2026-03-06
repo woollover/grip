@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
-import { applyEvent } from '../../../core/projections';
+import { commitEvent } from '../../../core/projections';
+import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { editorImageWidget } from './media';
@@ -9,10 +10,6 @@ import { AlignPicker } from './shared';
 interface Article {
   id: string; slug: string; title: string; body_md: string;
   tags: string; status: string; created_at: number; updated_at: number; published_at: number | null;
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export function renderArticlesIndex(db: Database): JSX.Element {
@@ -59,7 +56,7 @@ export function renderArticlesIndex(db: Database): JSX.Element {
   return authorLayout('Articles', content, db);
 }
 
-export function renderArticleNew(): JSX.Element {
+export function renderArticleNew(db: Database): JSX.Element {
   const content = (
     <div>
       <h2>New article</h2>
@@ -82,7 +79,7 @@ export function renderArticleNew(): JSX.Element {
     </div>
   );
 
-  return authorLayout('New article', content);
+  return authorLayout('New article', content, db);
 }
 
 export function handleArticleCreate(
@@ -93,8 +90,7 @@ export function handleArticleCreate(
   const slug = body.slug?.trim() || slugify(body.title);
   const tags = (body.tags ?? '').split(',').map(t => t.trim()).filter(Boolean);
   const event = { type: 'ArticleCreated' as const, id, title: body.title, slug, body: body.body, tags };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
   return id;
 }
 
@@ -142,18 +138,15 @@ export function handleArticleRevise(
 ): void {
   const tags = (body.tags ?? '').split(',').map(t => t.trim()).filter(Boolean);
   const event = { type: 'ArticleRevised' as const, id, title: body.title, body: body.body, tags };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
 export function handleArticlePublish(db: Database, store: EventStore, id: string): void {
   const event = { type: 'ArticlePublished' as const, id };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
 export function handleArticleUnpublish(db: Database, store: EventStore, id: string): void {
   const event = { type: 'ArticleUnpublished' as const, id };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }

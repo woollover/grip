@@ -1,5 +1,10 @@
 // GRIP theme presets — CSS variable overrides for PicoCSS v2
 
+function configVal(db: import('bun:sqlite').Database, key: string): string | null {
+  const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null;
+  return row?.value ?? null;
+}
+
 export type ThemeName = 'light' | 'dark' | 'coder' | 'cyberpunk' | 'literary' | 'ink';
 
 export const THEMES: Record<ThemeName, string> = {
@@ -312,14 +317,13 @@ export function buildOverrideCss(custom: ThemeCustom): string {
 }
 
 export function readThemeCustom(db: import('bun:sqlite').Database): ThemeCustom | null {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('theme_custom') as { value: string } | null;
-  if (!row) return null;
-  try { return JSON.parse(row.value); } catch { return null; }
+  const val = configVal(db, 'theme_custom');
+  if (!val) return null;
+  try { return JSON.parse(val); } catch { return null; }
 }
 
 export function getThemeCss(db: import('bun:sqlite').Database): string {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('theme') as { value: string } | null;
-  const theme = (row?.value ?? 'light') as ThemeName;
+  const theme = (configVal(db, 'theme') ?? 'light') as ThemeName;
   const base = THEMES[theme] ?? THEMES.light;
   const custom = readThemeCustom(db);
   if (!custom) return base;
@@ -330,13 +334,7 @@ export function getColorScheme(db: import('bun:sqlite').Database): 'dark' | 'lig
   const custom = readThemeCustom(db);
   if (custom?.colorScheme === 'dark')  return 'dark';
   if (custom?.colorScheme === 'light') return 'light';
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('theme') as { value: string } | null;
-  const theme = row?.value ?? 'light';
+  const theme = configVal(db, 'theme') ?? 'light';
   if (theme === 'dark' || theme === 'cyberpunk') return 'dark';
   return 'light';
-}
-
-/** @deprecated use getColorScheme */
-export function getThemeAttr(db: import('bun:sqlite').Database): string {
-  return getColorScheme(db);
 }

@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
-import { applyEvent } from '../../../core/projections';
+import { commitEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 
@@ -48,8 +48,7 @@ export function handleMicroCreate(
 ): void {
   const id = ulid();
   const event = { type: 'MicroPostCreated' as const, id, body: body.body };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
 export function handleMicroRetract(
@@ -57,6 +56,5 @@ export function handleMicroRetract(
   id: string
 ): void {
   const event = { type: 'MicroPostRetracted' as const, id };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }

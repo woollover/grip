@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import type { ApConfig } from '../../../activitypub/config';
+import { fmtDate, paginationNav } from '../../../views/shared';
 
 interface MicroPost {
   id: string; body_html: string; status: string; created_at: number;
@@ -48,10 +49,6 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
   `).all(PAGE_SIZE, (page - 1) * PAGE_SIZE) as MicroPost[];
 
   const showReplies = apCfg?.acceptReplies === true;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  const fmt = (ts: number) =>
-    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const content = (
     <div>
@@ -60,23 +57,13 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
       <ul class="note-stream">
         {posts.map(p => (
           <li id={p.id}>
-            <div class="note-meta">{fmt(p.created_at)}</div>
+            <div class="note-meta">{fmtDate(p.created_at)}</div>
             <div class="note-body">{p.body_html}</div>
             {showReplies ? renderReplies(db, p.id) : ''}
           </li>
         ))}
       </ul>
-      {totalPages > 1 && (
-        <nav class="pagination">
-          {page > 1
-            ? <a href={`/micro?page=${page - 1}`}>← Newer</a>
-            : <span class="pagination-disabled">← Newer</span>}
-          <span class="pagination-info">Page {page} of {totalPages}</span>
-          {page < totalPages
-            ? <a href={`/micro?page=${page + 1}`}>Older →</a>
-            : <span class="pagination-disabled">Older →</span>}
-        </nav>
-      )}
+      {paginationNav(page, total, PAGE_SIZE, '/micro')}
     </div>
   );
 

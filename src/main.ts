@@ -69,7 +69,7 @@ export async function main(): Promise<void> {
 
   // Start both servers
   const publicApp = createPublicApp(db, config.server.public_port, apCfg);
-  const authorApp = createAuthorApp(db, config.server.author_port, apCfg);
+  const authorApp = createAuthorApp(db, apCfg);
 
   publicApp.listen(config.server.public_port);
   authorApp.listen(config.server.author_port);

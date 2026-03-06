@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
-import { applyEvent } from '../../../core/projections';
+import { commitEvent } from '../../../core/projections';
 import { authorLayout } from './layout';
 import {
   type ThemeName, type ThemeCustom,
@@ -312,8 +312,7 @@ export function handleSiteConfigUpdate(
     description: body.description?.trim(),
     domain:      body.domain?.trim(),
   };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
 export function handleThemeChange(
