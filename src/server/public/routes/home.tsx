@@ -1,5 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
+import { fmtDate } from '../../../views/shared';
 
 interface Article {
   slug: string; title: string; published_at: number;
@@ -22,44 +23,37 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
     ORDER BY created_at DESC LIMIT 5
   `).all() as MicroPost[];
 
-  const fmt = (ts: number) =>
-    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
   const content = (
     <div>
       {articles.length > 0 && (
         <section>
-          <h2 style="margin-top:0;margin-bottom:1.25rem">Articles</h2>
+          <p class="section-label">Articles</p>
           <ul class="post-list">
             {articles.map(a => (
               <li>
-                <span class="post-date">{fmt(a.published_at)}</span>
+                <span class="post-date">{fmtDate(a.published_at)}</span>
                 <span class="post-title">
                   <a href={`/articles/${a.slug}`}>{a.title}</a>
                 </span>
               </li>
             ))}
           </ul>
-          <p style="margin-top:1rem;font-size:0.875rem">
-            <a href="/articles">All articles →</a>
-          </p>
+          <a href="/articles" class="see-all">All articles →</a>
         </section>
       )}
 
       {microPosts.length > 0 && (
-        <section style="margin-top:2.5rem">
-          <h2 style="margin-bottom:1.25rem">Notes</h2>
+        <section style="margin-top:3rem">
+          <p class="section-label">Notes</p>
           <ul class="note-stream">
             {microPosts.map(p => (
               <li>
-                <div class="note-meta">{fmt(p.created_at)}</div>
+                <div class="note-meta">{fmtDate(p.created_at)}</div>
                 <div class="note-body">{p.body_html}</div>
               </li>
             ))}
           </ul>
-          <p style="margin-top:1rem;font-size:0.875rem">
-            <a href="/micro">All notes →</a>
-          </p>
+          <a href="/micro" class="see-all">All notes →</a>
         </section>
       )}
 
