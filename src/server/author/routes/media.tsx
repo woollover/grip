@@ -90,7 +90,7 @@ export function editorImageWidget(): JSX.Element {
         📎 Insert image
       </button>
       <input type="file" id="image-file-input" accept="image/*" style="display:none" />
-      <script safe>{script}</script>
+      <script>{script}</script>
     </div>
   );
 }

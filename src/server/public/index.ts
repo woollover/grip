@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
 import type { Database } from "bun:sqlite";
-import { getThemeCss, getThemeAttr } from "../../core/themes";
+import { getThemeCss } from "../../core/themes";
 import { renderHome } from "./routes/home";
 import { renderArticlesList, renderArticle } from "./routes/articles";
 import { renderMicroList } from "./routes/micro";

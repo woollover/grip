@@ -16,7 +16,7 @@ export function renderPage(db: Database, slug: string, siteTitle: string): JSX.E
   const content = (
     <article>
       <h1>{page.title}</h1>
-      <div safe>{page.body_html}</div>
+      <div>{page.body_html}</div>
     </article>
   );
 

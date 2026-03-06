@@ -415,11 +415,11 @@ export function createAuthorApp(
                       <tr>
                         <td><code>{r.note_id.slice(0, 8)}</code></td>
                         <td>
-                          <a href={r.actor_uri} rel="noopener noreferrer" target="_blank">
+                          <a href={r.actor_uri} rel="noopener noreferrer" target="_blank" safe>
                             {r.actor_name}
                           </a>
                         </td>
-                        <td>{truncated}</td>
+                        <td safe>{truncated}</td>
                         <td><small>{new Date(r.published_at).toISOString()}</small></td>
                         <td>{r.status}</td>
                         <td>

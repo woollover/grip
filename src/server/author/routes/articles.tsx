@@ -74,7 +74,7 @@ export function renderArticleNew(): JSX.Element {
             hx-target="#preview" />
         </label>
         <AlignPicker />
-        <div safe>{editorImageWidget()}</div>
+        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview"><em>Preview will appear here…</em></div>
         <button type="submit">Save draft</button>
         <a href="/articles" role="button" class="outline secondary">Cancel</a>
@@ -118,7 +118,7 @@ export function renderArticleEdit(db: Database, id: string): JSX.Element {
             hx-target="#preview">{article.body_md}</textarea>
         </label>
         <AlignPicker />
-        <div safe>{editorImageWidget()}</div>
+        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview">Loading preview…</div>
         <button type="submit">Save revision</button>
       </form>

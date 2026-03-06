@@ -90,11 +90,12 @@ export function renderThemeSettings(db: Database): JSX.Element {
   };
 
   const presetMeta: { name: ThemeName; label: string }[] = [
+    { name: 'coder',     label: 'Coder'     },
     { name: 'light',     label: 'Light'     },
     { name: 'dark',      label: 'Dark'      },
-    { name: 'cyberpunk', label: 'Cyberpunk' },
     { name: 'literary',  label: 'Literary'  },
     { name: 'ink',       label: 'Ink'       },
+    { name: 'cyberpunk', label: 'Cyberpunk' },
   ];
 
   const themeScript = `
@@ -131,8 +132,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
       : '';
 
     const scheme = form.querySelector('[name=colorScheme]:checked');
-    if (scheme && scheme.value === 'dark') root.setAttribute('data-theme', 'dark');
-    else root.removeAttribute('data-theme');
+    root.setAttribute('data-theme', scheme && scheme.value === 'dark' ? 'dark' : 'light');
   }
 
   window.applyPreset = function(name) {
@@ -292,7 +292,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
 
       </form>
 
-      <script safe>{themeScript}</script>
+      <script>{themeScript}</script>
     </div>
   );
 
@@ -326,7 +326,7 @@ export function handleThemeChange(
     colorAccent?: string; colorBg?: string; colorText?: string; colorMuted?: string;
   }
 ): void {
-  const validThemes: ThemeName[] = ['light', 'dark', 'cyberpunk', 'literary', 'ink'];
+  const validThemes: ThemeName[] = ['light', 'dark', 'coder', 'cyberpunk', 'literary', 'ink'];
   const theme = validThemes.includes(body.theme as ThemeName) ? (body.theme as ThemeName) : 'light';
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('theme', theme);
 

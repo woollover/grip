@@ -18,7 +18,7 @@ export function AlignPicker(): JSX.Element {
       <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('left')">← Left</button>
       <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('center')">Center</button>
       <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('right')">Right →</button>
-      <script safe>{script}</script>
+      <script>{script}</script>
     </div>
   );
 }

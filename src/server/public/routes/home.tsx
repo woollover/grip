@@ -2,8 +2,7 @@ import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 
 interface Article {
-  id: string; slug: string; title: string; body_html: string;
-  tags: string; published_at: number | null;
+  slug: string; title: string; published_at: number;
 }
 
 interface MicroPost {
@@ -12,9 +11,9 @@ interface MicroPost {
 
 export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
   const articles = db.prepare(`
-    SELECT id, slug, title, body_html, tags, published_at
+    SELECT slug, title, published_at
     FROM articles WHERE status = 'published'
-    ORDER BY published_at DESC LIMIT 5
+    ORDER BY published_at DESC LIMIT 8
   `).all() as Article[];
 
   const microPosts = db.prepare(`
@@ -23,35 +22,49 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
     ORDER BY created_at DESC LIMIT 5
   `).all() as MicroPost[];
 
+  const fmt = (ts: number) =>
+    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
   const content = (
     <div>
-      <h1>{siteTitle}</h1>
-      {siteDescription ? <p>{siteDescription}</p> : ''}
-
       {articles.length > 0 && (
         <section>
-          <h2>Recent articles</h2>
-          {articles.map(a => (
-            <article>
-              <h3><a href={`/articles/${a.slug}`}>{a.title}</a></h3>
-              <small>{a.published_at ? new Date(a.published_at).toLocaleDateString() : ''}</small>
-            </article>
-          ))}
-          <p><a href="/articles">All articles →</a></p>
+          <h2 style="margin-top:0;margin-bottom:1.25rem">Articles</h2>
+          <ul class="post-list">
+            {articles.map(a => (
+              <li>
+                <span class="post-date">{fmt(a.published_at)}</span>
+                <span class="post-title">
+                  <a href={`/articles/${a.slug}`}>{a.title}</a>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p style="margin-top:1rem;font-size:0.875rem">
+            <a href="/articles">All articles →</a>
+          </p>
         </section>
       )}
 
       {microPosts.length > 0 && (
-        <section>
-          <h2>Recent notes</h2>
-          {microPosts.map(p => (
-            <article>
-              <div safe>{p.body_html}</div>
-              <small>{new Date(p.created_at).toLocaleDateString()}</small>
-            </article>
-          ))}
-          <p><a href="/micro">All notes →</a></p>
+        <section style="margin-top:2.5rem">
+          <h2 style="margin-bottom:1.25rem">Notes</h2>
+          <ul class="note-stream">
+            {microPosts.map(p => (
+              <li>
+                <div class="note-meta">{fmt(p.created_at)}</div>
+                <div class="note-body">{p.body_html}</div>
+              </li>
+            ))}
+          </ul>
+          <p style="margin-top:1rem;font-size:0.875rem">
+            <a href="/micro">All notes →</a>
+          </p>
         </section>
+      )}
+
+      {articles.length === 0 && microPosts.length === 0 && (
+        <p style="color:var(--pico-muted-color)">Nothing published yet.</p>
       )}
     </div>
   );

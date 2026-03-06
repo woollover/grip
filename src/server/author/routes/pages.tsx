@@ -68,7 +68,7 @@ export function renderPageNew(): JSX.Element {
             hx-target="#preview" />
         </label>
         <AlignPicker />
-        <div safe>{editorImageWidget()}</div>
+        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview"><em>Preview here…</em></div>
         <button type="submit">Save draft</button>
       </form>
@@ -109,7 +109,7 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
             hx-target="#preview">{page.body_md}</textarea>
         </label>
         <AlignPicker />
-        <div safe>{editorImageWidget()}</div>
+        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview">Loading preview…</div>
         <button type="submit">Save revision</button>
       </form>

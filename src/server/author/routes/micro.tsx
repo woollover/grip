@@ -25,7 +25,7 @@ export function renderMicroIndex(db: Database): JSX.Element {
       {posts.map(p => (
         <article style="margin-bottom:1rem">
           <small>{new Date(p.created_at).toISOString()} · {p.status}</small>
-          <div safe>{p.body_html}</div>
+          <div>{p.body_html}</div>
           {p.status === 'active'
             ? (
               <form method="POST" action={`/micro/${p.id}/retract`}>

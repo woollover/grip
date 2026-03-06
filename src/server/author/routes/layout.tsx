@@ -1,11 +1,10 @@
 import type { Database } from 'bun:sqlite';
-import { getThemeAttr } from '../../../core/themes';
+import { getColorScheme } from '../../../core/themes';
 
 export function authorLayout(title: string, content: JSX.Element, db?: Database): JSX.Element {
-  const themeAttr = db ? getThemeAttr(db) : '';
-  const isDark = themeAttr.includes('dark');
-  return (
-    <html lang="en" data-theme={isDark ? 'dark' : undefined}>
+  const scheme = db ? getColorScheme(db) : 'light';
+  const page = (
+    <html lang="en" data-theme={scheme}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -36,11 +35,12 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
               </li>
             </ul>
           </nav>
-          <main safe>
+          <main>
             {content}
           </main>
         </div>
       </body>
     </html>
   );
+  return ('<!DOCTYPE html>' + page) as unknown as JSX.Element;
 }

@@ -3,30 +3,46 @@ import { publicLayout } from '../../../views/layout';
 
 interface Article {
   id: string; slug: string; title: string;
-  body_md: string; body_html: string; tags: string;
-  status: string; created_at: number; updated_at: number; published_at: number | null;
+  body_html: string; tags: string;
+  created_at: number; published_at: number | null;
 }
 
 export function renderArticlesList(db: Database, siteTitle: string): JSX.Element {
   const articles = db.prepare(`
-    SELECT * FROM articles WHERE status = 'published'
+    SELECT id, slug, title, tags, published_at
+    FROM articles WHERE status = 'published'
     ORDER BY published_at DESC
   `).all() as Article[];
 
+  const fmt = (ts: number) =>
+    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
   const content = (
     <div>
-      <h1>Articles</h1>
-      {articles.length === 0 && <p>No articles published yet.</p>}
-      {articles.map(a => {
-        const tags: string[] = JSON.parse(a.tags);
-        return (
-          <article>
-            <h2><a href={`/articles/${a.slug}`}>{a.title}</a></h2>
-            <small>{a.published_at ? new Date(a.published_at).toLocaleDateString() : ''}</small>
-            {tags.length > 0 && <p>{tags.map(t => <mark>{t}</mark>)}</p>}
-          </article>
-        );
-      })}
+      <h1 style="margin-top:0;margin-bottom:1.5rem">Articles</h1>
+      {articles.length === 0 && (
+        <p style="color:var(--pico-muted-color)">No articles published yet.</p>
+      )}
+      <ul class="post-list">
+        {articles.map(a => {
+          const tags: string[] = JSON.parse(a.tags);
+          return (
+            <li>
+              <span class="post-date">{a.published_at ? fmt(a.published_at) : ''}</span>
+              <span class="post-title">
+                <a href={`/articles/${a.slug}`}>{a.title}</a>
+                {tags.length > 0 && (
+                  <span style="margin-left:0.75rem">
+                    {tags.map(t => (
+                      <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag" style="margin-right:0.25rem">{t}</a>
+                    ))}
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 
@@ -41,23 +57,23 @@ export function renderArticle(db: Database, slug: string, siteTitle: string): JS
   if (!article) return null;
 
   const tags: string[] = JSON.parse(article.tags);
+  const fmt = (ts: number) =>
+    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const content = (
-    <div>
-      <article>
-        <header>
-          <h1>{article.title}</h1>
-          <small>
-            {article.published_at ? new Date(article.published_at).toLocaleDateString() : ''}
-            {tags.length > 0 && <span>{' · '}{tags.map(t => <mark>{t}</mark>)}</span>}
-          </small>
-        </header>
-        <div class="prose" safe>{article.body_html}</div>
-      </article>
-      <nav aria-label="Breadcrumb">
+    <article>
+      <h1 style="margin-top:0;margin-bottom:0.5rem">{article.title}</h1>
+      <div class="article-meta">
+        {article.published_at ? <span>{fmt(article.published_at)}</span> : ''}
+        {tags.map(t => (
+          <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag">{t}</a>
+        ))}
+      </div>
+      <div class="prose">{article.body_html}</div>
+      <p style="margin-top:2.5rem;font-size:0.875rem;border-top:1px solid var(--pico-muted-border-color);padding-top:1.25rem">
         <a href="/articles">← All articles</a>
-      </nav>
-    </div>
+      </p>
+    </article>
   );
 
   return publicLayout({ title: article.title, siteTitle, db }, content);

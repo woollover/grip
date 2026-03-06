@@ -1,5 +1,5 @@
 export function renderLoginPage(badPassword: boolean, lockedOut: boolean): JSX.Element {
-  return (
+  const page = (
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
@@ -30,4 +30,5 @@ export function renderLoginPage(badPassword: boolean, lockedOut: boolean): JSX.E
       </body>
     </html>
   );
+  return ('<!DOCTYPE html>' + page) as unknown as JSX.Element;
 }
