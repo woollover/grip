@@ -6,11 +6,12 @@ export interface LayoutOptions {
   description?: string;
   siteTitle?: string;
   db?: Database;
+  activeTag?: string;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function buildSidebar(db: Database): JSX.Element {
+function buildSidebar(db: Database, activeTag?: string): JSX.Element {
   const desc = db.prepare(
     "SELECT value FROM config WHERE key = 'site_description'"
   ).get() as { value: string } | null;
@@ -55,7 +56,7 @@ function buildSidebar(db: Database): JSX.Element {
           <h4 class="sb-label">Tags</h4>
           <div class="tag-cloud">
             {tags.map(t => (
-              <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag">{t}</a>
+              <a href={`/articles?tag=${encodeURIComponent(t)}`} class={`tag${t === activeTag ? ' tag--active' : ''}`}>{t}</a>
             ))}
           </div>
         </section>
@@ -149,6 +150,7 @@ const CSS = `
   text-decoration: none;
 }
 .tag:hover { border-color: var(--pico-primary); color: var(--pico-primary); }
+.tag--active { border-color: var(--pico-primary); color: var(--pico-primary); background: color-mix(in srgb, var(--pico-primary) 10%, transparent); }
 
 /* ── Footer ── */
 .site-footer {
@@ -230,6 +232,21 @@ const CSS = `
 /* Tables in prose */
 .prose table { font-size: 0.9rem; }
 
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--pico-muted-border-color);
+  font-size: 0.875rem;
+}
+.pagination a { color: inherit; text-decoration: none; }
+.pagination a:hover { color: var(--pico-primary); }
+.pagination-info { flex: 1; text-align: center; color: var(--pico-muted-color); }
+.pagination-disabled { color: var(--pico-muted-border-color); cursor: default; }
+
 /* ── Article header meta ── */
 .article-meta {
   font-size: 0.85rem;
@@ -246,9 +263,9 @@ const CSS = `
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Element {
-  const { title, description = '', siteTitle = 'GRIP', db } = opts;
+  const { title, description = '', siteTitle = 'GRIP', db, activeTag } = opts;
   const scheme = db ? getColorScheme(db) : 'light';
-  const sidebar = db ? buildSidebar(db) : null;
+  const sidebar = db ? buildSidebar(db, activeTag) : null;
 
   const page = (
     <html lang="en" data-theme={scheme}>

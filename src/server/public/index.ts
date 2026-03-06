@@ -9,7 +9,7 @@ import { renderPage } from "./routes/pages";
 import { serveMedia } from "./routes/media";
 import { mountApRoutes } from "../../activitypub/routes";
 import type { ApConfig } from "../../activitypub/config";
-import { renderRssAll } from "./routes/rss";
+import { renderRssAll, renderRssArticles, renderRssMicro } from "./routes/rss";
 
 function getSiteConfig(db: Database): {
   title: string;
@@ -66,9 +66,11 @@ export function createPublicApp(
     return html(renderHome(db, title, description));
   });
 
-  app.get("/articles", () => {
+  app.get("/articles", ({ query }) => {
     const { title } = getSiteConfig(db);
-    return html(renderArticlesList(db, title));
+    const tag = query.tag as string | undefined;
+    const page = Math.max(1, parseInt(query.page as string) || 1);
+    return html(renderArticlesList(db, title, tag, page));
   });
 
   app.get("/articles/:slug", ({ params }) => {
@@ -78,9 +80,10 @@ export function createPublicApp(
     return html(page);
   });
 
-  app.get("/micro", () => {
+  app.get("/micro", ({ query }) => {
     const { title } = getSiteConfig(db);
-    return html(renderMicroList(db, title, apCfg));
+    const page = Math.max(1, parseInt(query.page as string) || 1);
+    return html(renderMicroList(db, title, apCfg, page));
   });
 
   app.get("/pages/:slug", ({ params }) => {
@@ -96,11 +99,21 @@ export function createPublicApp(
     return response;
   });
 
+  const rssHeaders = { "Content-Type": "application/rss+xml; charset=utf-8" };
+
   app.get("/rss.xml", () => {
     const { title, description, domain } = getSiteConfig(db);
-    return new Response(renderRssAll(db, domain, title, description), {
-      headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
-    });
+    return new Response(renderRssAll(db, domain, title, description), { headers: rssHeaders });
+  });
+
+  app.get("/articles/rss.xml", () => {
+    const { title, description, domain } = getSiteConfig(db);
+    return new Response(renderRssArticles(db, domain, title, description), { headers: rssHeaders });
+  });
+
+  app.get("/micro/rss.xml", () => {
+    const { title, description, domain } = getSiteConfig(db);
+    return new Response(renderRssMicro(db, domain, title, description), { headers: rssHeaders });
   });
 
   if (apCfg) {

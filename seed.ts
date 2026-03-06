@@ -129,7 +129,7 @@ Prefer functions. They share the caller's environment, they compose, and they're
 
 \`\`\`bash
 backup_db() {
-  local src=\"${1:?usage: backup_db <src>}\"
+  local src="\${1:?usage: backup_db <src>}"
   local dst="backup_$(date +%Y%m%d_%H%M%S).sqlite"
   cp "$src" "$dst"
   echo "Backed up to $dst"
@@ -215,7 +215,7 @@ git merge --no-ff feature/pagination
 The merge commit is useful — it marks the integration point.`,
   },
   {
-    title: 'TypeScript's type system is a programming language',
+    title: "TypeScript's type system is a programming language",
     tags: ['typescript', 'types'],
     daysAgo: 142,
     body: `TypeScript's type system is Turing complete. This is not a theoretical curiosity — it changes how you think about types.

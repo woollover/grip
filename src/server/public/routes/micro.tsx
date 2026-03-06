@@ -34,13 +34,21 @@ function renderReplies(db: Database, noteId: string): JSX.Element {
   );
 }
 
-export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfig | null): JSX.Element {
+const PAGE_SIZE = 20;
+
+export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfig | null, page = 1): JSX.Element {
+  const total = (db.prepare(
+    "SELECT COUNT(*) as n FROM micro_posts WHERE status = 'active'"
+  ).get() as { n: number }).n;
+
   const posts = db.prepare(`
     SELECT * FROM micro_posts WHERE status = 'active'
     ORDER BY created_at DESC
-  `).all() as MicroPost[];
+    LIMIT ? OFFSET ?
+  `).all(PAGE_SIZE, (page - 1) * PAGE_SIZE) as MicroPost[];
 
   const showReplies = apCfg?.acceptReplies === true;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const fmt = (ts: number) =>
     new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -58,6 +66,17 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
           </li>
         ))}
       </ul>
+      {totalPages > 1 && (
+        <nav class="pagination">
+          {page > 1
+            ? <a href={`/micro?page=${page - 1}`}>← Newer</a>
+            : <span class="pagination-disabled">← Newer</span>}
+          <span class="pagination-info">Page {page} of {totalPages}</span>
+          {page < totalPages
+            ? <a href={`/micro?page=${page + 1}`}>Older →</a>
+            : <span class="pagination-disabled">Older →</span>}
+        </nav>
+      )}
     </div>
   );
 
