@@ -98,7 +98,7 @@ export function createAuthorApp(
   });
 
   app.post("/login", async ({ body, request }) => {
-    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
     const passphrase = (body as { passphrase?: string }).passphrase ?? "";
 
     if (isLockedOut(ip)) {
@@ -131,8 +131,8 @@ export function createAuthorApp(
     });
   });
 
-  app.post("/logout", () => {
-    destroySession(db);
+  app.post("/logout", ({ cookie }) => {
+    if (verifySession(db, cv(cookie))) destroySession(db);
     return new Response(null, {
       status: 302,
       headers: {
@@ -166,7 +166,7 @@ export function createAuthorApp(
 
   app.get("/articles/new", ({ cookie }) => {
     return (
-      requireAuth(cv(cookie)) ?? html(renderArticleNew())
+      requireAuth(cv(cookie)) ?? html(renderArticleNew(db))
     );
   });
 
@@ -217,8 +217,10 @@ export function createAuthorApp(
     });
   });
 
-  // Preview endpoint (HTMX)
-  app.post("/preview", ({ body }) => {
+  // Preview endpoint (HTMX) — auth required
+  app.post("/preview", ({ body, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
     const bodyMd = (body as Record<string, string>)?.body ?? "";
     return new Response(renderMd(bodyMd), {
       headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -403,6 +405,12 @@ export function createAuthorApp(
 
 function html(content: JSX.Element): Response {
   return new Response(content, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+    },
   });
 }

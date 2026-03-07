@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import type { ApConfig } from './config';
-import { verifyInboundSignature, signRequest, signGetRequest } from './signatures';
+import { verifyInboundSignature, signRequest, signGetRequest, isSafeApUrl } from './signatures';
 import { buildAcceptActivity, buildNote, buildCreateActivity } from './objects';
 import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
@@ -32,6 +32,11 @@ export async function handleInbox(
     return new Response('Bad Request', { status: 400 });
   }
 
+  // Ensure the activity claims to be from the verified key owner
+  if (activity.actor && activity.actor !== actorUri) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
   switch (activity.type) {
     case 'Follow':
       await handleFollow(db, cfg, activity, actorUri);
@@ -60,6 +65,12 @@ async function handleFollow(
   activity: any,
   actorUri: string,
 ): Promise<void> {
+  // Validate actor URL before fetching
+  if (!isSafeApUrl(actorUri)) {
+    console.error('[activitypub] Unsafe actor URL in Follow:', actorUri);
+    return;
+  }
+
   // Fetch the follower's actor document to get their inbox URL
   let inboxUrl: string;
   try {
@@ -67,11 +78,18 @@ async function handleFollow(
     const ownKeyId = `${cfg.actorUrl}#main-key`;
     const fetchHeaders: Record<string, string> = { Accept: 'application/activity+json' };
     await signGetRequest({ url: new URL(actorUri), keyId: ownKeyId, privateKey, headers: fetchHeaders });
-    const resp = await fetch(actorUri, { headers: fetchHeaders });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    let resp: Response;
+    try {
+      resp = await fetch(actorUri, { headers: fetchHeaders, signal: ctrl.signal });
+    } finally {
+      clearTimeout(t);
+    }
     if (!resp.ok) throw new Error(`Failed to fetch actor: ${resp.status}`);
     const actor = await resp.json() as any;
     inboxUrl = actor.inbox;
-    if (!inboxUrl) throw new Error('No inbox in actor document');
+    if (!inboxUrl || !isSafeApUrl(inboxUrl)) throw new Error('Missing or unsafe inbox URL');
   } catch (err) {
     console.error('[activitypub] Failed to fetch follower actor:', err);
     return;
@@ -161,18 +179,26 @@ async function handleCreateReply(
   const content = (note.content || '').replace(/<[^>]+>/g, '');
 
   let actorName = actorUri;
-  try {
-    const { privateKey } = await getKeyPair(db);
-    const ownKeyId = `${cfg.actorUrl}#main-key`;
-    const fetchHeaders: Record<string, string> = { Accept: 'application/activity+json' };
-    await signGetRequest({ url: new URL(actorUri), keyId: ownKeyId, privateKey, headers: fetchHeaders });
-    const resp = await fetch(actorUri, { headers: fetchHeaders });
-    if (resp.ok) {
-      const actor = await resp.json() as any;
-      actorName = actor.name || actor.preferredUsername || actorUri;
+  if (isSafeApUrl(actorUri)) {
+    try {
+      const { privateKey } = await getKeyPair(db);
+      const ownKeyId = `${cfg.actorUrl}#main-key`;
+      const fetchHeaders: Record<string, string> = { Accept: 'application/activity+json' };
+      await signGetRequest({ url: new URL(actorUri), keyId: ownKeyId, privateKey, headers: fetchHeaders });
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      try {
+        const resp = await fetch(actorUri, { headers: fetchHeaders, signal: ctrl.signal });
+        if (resp.ok) {
+          const actor = await resp.json() as any;
+          actorName = actor.name || actor.preferredUsername || actorUri;
+        }
+      } finally {
+        clearTimeout(t);
+      }
+    } catch {
+      // fall back to actor URI
     }
-  } catch {
-    // fall back to actor URI
   }
 
   db.query(

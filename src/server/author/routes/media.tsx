@@ -5,6 +5,18 @@ import { ulid } from 'ulidx';
 import { mkdirSync } from 'fs';
 import { authorLayout } from './layout';
 
+const ALLOWED_MIME: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  pdf: 'application/pdf', mp4: 'video/mp4', mp3: 'audio/mpeg',
+  txt: 'text/plain', md: 'text/plain',
+};
+
+function deriveMimeType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return ALLOWED_MIME[ext] ?? '';
+}
+
 interface MediaFile {
   id: string; filename: string; mime_type: string; path: string;
   alt_text: string | null; tags: string; uploaded_at: number;
@@ -95,31 +107,40 @@ export function editorImageWidget(): JSX.Element {
   );
 }
 
-export async function handleMediaUploadJson(
+async function saveUpload(
   db: Database, store: EventStore,
-  body: { file: File; altText?: string }
-): Promise<{ id: string; url: string; alt: string }> {
+  body: { file: File; altText?: string },
+): Promise<{ id: string; mimeType: string; alt: string }> {
+  const mimeType = deriveMimeType(body.file.name);
+  if (!mimeType) throw new Error(`File type not allowed: ${body.file.name}`);
+
   const mediaPath = `${process.cwd()}/media`;
   mkdirSync(mediaPath, { recursive: true });
 
   const id = ulid();
-  const ext = body.file.name.split('.').pop() ?? '';
-  const filename = `${id}.${ext}`;
-  const filePath = `${mediaPath}/${filename}`;
-
+  const ext = body.file.name.split('.').pop()!.toLowerCase();
+  const filePath = `${mediaPath}/${id}.${ext}`;
   await Bun.write(filePath, await body.file.arrayBuffer());
 
   const alt = body.altText?.trim() || body.file.name.replace(/\.[^.]+$/, '');
   const event = {
     type: 'MediaUploaded' as const,
-    id, filename: body.file.name,
-    mimeType: body.file.type,
+    id,
+    filename: body.file.name,
+    mimeType,
     path: filePath,
     altText: alt,
   };
   store.append(event);
   applyEvent(db, event, Date.now());
+  return { id, mimeType, alt };
+}
 
+export async function handleMediaUploadJson(
+  db: Database, store: EventStore,
+  body: { file: File; altText?: string }
+): Promise<{ id: string; url: string; alt: string }> {
+  const { id, alt } = await saveUpload(db, store, body);
   return { id, url: `/media/${id}`, alt };
 }
 
@@ -127,24 +148,5 @@ export async function handleMediaUpload(
   db: Database, store: EventStore,
   body: { file: File; altText?: string }
 ): Promise<void> {
-  const mediaPath = `${process.cwd()}/media`;
-  mkdirSync(mediaPath, { recursive: true });
-
-  const id = ulid();
-  const ext = body.file.name.split('.').pop() ?? '';
-  const filename = `${id}.${ext}`;
-  const filePath = `${mediaPath}/${filename}`;
-
-  await Bun.write(filePath, await body.file.arrayBuffer());
-
-  const event = {
-    type: 'MediaUploaded' as const,
-    id,
-    filename: body.file.name,
-    mimeType: body.file.type,
-    path: filePath,
-    altText: body.altText,
-  };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  await saveUpload(db, store, body);
 }

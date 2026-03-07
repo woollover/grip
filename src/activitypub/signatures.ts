@@ -1,6 +1,29 @@
 const encoder = new TextEncoder();
 
 /**
+ * Reject URLs that point to loopback, RFC-1918, or link-local hosts.
+ * All ActivityPub fetches must go to public HTTPS endpoints only.
+ */
+export function isSafeApUrl(urlString: string): boolean {
+  let url: URL;
+  try { url = new URL(urlString); } catch { return false; }
+  if (url.protocol !== 'https:') return false;
+  const h = url.hostname;
+  if (
+    h === 'localhost' ||
+    /^127\./.test(h) ||
+    /^10\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^::1$/.test(h) ||
+    /^fc[0-9a-f]/i.test(h) ||
+    /^fe80/i.test(h)
+  ) return false;
+  return true;
+}
+
+/**
  * Sign an outbound POST request by adding Date, Digest, and Signature headers.
  */
 export async function signRequest(params: {
@@ -109,6 +132,9 @@ export async function verifyInboundSignature(
   if (Math.abs(Date.now() - requestDate) > 60_000) {
     throw new Error('Request Date is too far from current time');
   }
+
+  // Validate keyId URL before fetching
+  if (!isSafeApUrl(keyId)) throw new Error(`Unsafe keyId URL: ${keyId}`);
 
   // Fetch actor's public key (sign the GET if we have our own key)
   const controller = new AbortController();
