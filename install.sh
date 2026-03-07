@@ -55,7 +55,7 @@ if id "$GRIP_USER" &>/dev/null; then
   ok "User '${GRIP_USER}' already exists — skipping."
 else
   info "Creating a dedicated '${GRIP_USER}' system user…"
-  useradd -r -m -d "/home/$GRIP_USER" -s /bin/bash "$GRIP_USER"
+  useradd -r -M -d "$GRIP_DIR" -s /bin/bash "$GRIP_USER"
   ok "User '${GRIP_USER}' created."
 fi
 info "Granting '${GRIP_USER}' permission to restart its own service…"
@@ -108,9 +108,20 @@ rm /tmp/grip.tar.gz
 ok "GRIP installed at ${GRIP_DIR}."
 echo
 
-# ── Step 5: Config file ───────────────────────────────────────────────────────
+# ── Step 5: Data directories ──────────────────────────────────────────────────
 hr
-say "${BOLD}Step 5 — Configuration file${RESET}"
+say "${BOLD}Step 5 — Data directories${RESET}"
+hr
+echo
+info "Creating data and media directories…"
+mkdir -p "$GRIP_DIR/data" "$GRIP_DIR/media"
+chown -R "$GRIP_USER:$GRIP_USER" "$GRIP_DIR/data" "$GRIP_DIR/media"
+ok "Directories ready."
+echo
+
+# ── Step 6: Config file ───────────────────────────────────────────────────────
+hr
+say "${BOLD}Step 6 — Configuration file${RESET}"
 hr
 echo
 if [[ -f "$GRIP_DIR/grip.toml" ]]; then
@@ -123,9 +134,9 @@ else
 fi
 echo
 
-# ── Step 6: systemd service ───────────────────────────────────────────────────
+# ── Step 7: systemd service ───────────────────────────────────────────────────
 hr
-say "${BOLD}Step 6 — Systemd service${RESET}"
+say "${BOLD}Step 7 — Systemd service${RESET}"
 hr
 echo
 info "Installing grip.service…"
@@ -143,7 +154,7 @@ echo
 say "GRIP is installed. One step left before you can start:"
 echo
 say "  ${BOLD}Run the setup wizard:${RESET}"
-say "  ${CYAN}su - $GRIP_USER -c '/opt/grip/grip setup'${RESET}"
+say "  ${CYAN}su - $GRIP_USER -c '$GRIP_DIR/grip setup'${RESET}"
 echo
 say "The wizard will:"
 say "  ${DIM}• Ask for your site title, description and domain${RESET}"
