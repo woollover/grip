@@ -64,7 +64,11 @@ export async function main(): Promise<void> {
   const apCfg = loadApConfig(rawToml, config.server.domain);
   if (apCfg) {
     await ensureKeyPair(db);
+    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_enabled', '1');
+    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_username', apCfg.username);
     console.log(`ActivityPub enabled as @${apCfg.username}@${apCfg.domain}`);
+  } else {
+    db.prepare('DELETE FROM config WHERE key = ?').run('ap_enabled');
   }
 
   // Start both servers

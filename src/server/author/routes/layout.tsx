@@ -3,6 +3,9 @@ import { getColorScheme } from '../../../core/themes';
 
 export function authorLayout(title: string, content: JSX.Element, db?: Database): JSX.Element {
   const scheme = db ? getColorScheme(db) : 'light';
+  const apEnabled = db
+    ? !!(db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as { value: string } | null)?.value
+    : false;
   const page = (
     <html lang="en" data-theme={scheme}>
       <head>
@@ -47,6 +50,8 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
               <li><a href="/pages">Pages</a></li>
               <li><a href="/media">Media</a></li>
               <li><a href="/settings">Settings</a></li>
+              {apEnabled && <li><a href="/followers">Followers</a></li>}
+              {apEnabled && <li><a href="/replies">Replies</a></li>}
               <li style="margin-left:auto">
                 <form method="POST" action="/logout" style="margin:0">
                   <button type="submit" class="outline secondary" style="padding:0.25rem 0.75rem">Logout</button>

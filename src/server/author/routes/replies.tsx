@@ -1,6 +1,42 @@
 import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 
+export function renderFollowersIndex(db: Database): JSX.Element {
+  const followers = db
+    .prepare('SELECT actor_uri, inbox_url, followed_at FROM ap_followers ORDER BY followed_at DESC')
+    .all() as { actor_uri: string; inbox_url: string; followed_at: number }[];
+
+  const content = (
+    <div>
+      <div class="page-hd">
+        <h2 style="margin:0">Followers</h2>
+        <small style="color:var(--pico-muted-color)">{followers.length} follower{followers.length !== 1 ? 's' : ''}</small>
+      </div>
+      {followers.length === 0
+        ? <p style="color:var(--pico-muted-color)">No followers yet.</p>
+        : (
+          <table>
+            <thead>
+              <tr><th>Actor</th><th>Inbox</th><th>Followed</th></tr>
+            </thead>
+            <tbody>
+              {followers.map(f => (
+                <tr>
+                  <td><a href={f.actor_uri} target="_blank" rel="noopener noreferrer" safe>{f.actor_uri}</a></td>
+                  <td><small safe>{f.inbox_url}</small></td>
+                  <td><small>{new Date(f.followed_at).toISOString().slice(0, 10)}</small></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      }
+    </div>
+  );
+
+  return authorLayout('Followers', content, db);
+}
+
 export function renderRepliesIndex(db: Database): JSX.Element {
   const replies = db
     .prepare(

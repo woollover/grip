@@ -45,10 +45,45 @@ export async function signRequest(params: {
 }
 
 /**
+ * Sign an outbound GET request (no body/digest).
+ */
+export async function signGetRequest(params: {
+  url: URL;
+  keyId: string;
+  privateKey: CryptoKey;
+  headers: Record<string, string>;
+}): Promise<void> {
+  const { url, keyId, privateKey, headers } = params;
+
+  headers['Date'] = new Date().toUTCString();
+  headers['Host'] = url.host;
+
+  const signingString = [
+    `(request-target): get ${url.pathname}${url.search}`,
+    `host: ${headers['Host']}`,
+    `date: ${headers['Date']}`,
+  ].join('\n');
+
+  const sigBuf = await crypto.subtle.sign(
+    { name: 'RSASSA-PKCS1-v1_5' },
+    privateKey,
+    encoder.encode(signingString),
+  );
+  const sigB64 = Buffer.from(sigBuf).toString('base64');
+
+  headers['Signature'] = `keyId="${keyId}",algorithm="rsa-sha256",headers="(request-target) host date",signature="${sigB64}"`;
+}
+
+/**
  * Verify an inbound request's HTTP Signature.
  * Returns the verified actor URI, or throws on failure.
+ * Pass ownKeyId + ownPrivateKey so the key-fetch GET can be signed.
  */
-export async function verifyInboundSignature(request: Request): Promise<string> {
+export async function verifyInboundSignature(
+  request: Request,
+  ownKeyId?: string,
+  ownPrivateKey?: CryptoKey,
+): Promise<string> {
   const sigHeader = request.headers.get('Signature');
   if (!sigHeader) throw new Error('Missing Signature header');
 
@@ -75,15 +110,16 @@ export async function verifyInboundSignature(request: Request): Promise<string> 
     throw new Error('Request Date is too far from current time');
   }
 
-  // Fetch actor's public key
+  // Fetch actor's public key (sign the GET if we have our own key)
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   let actorDoc: any;
   try {
-    const resp = await fetch(keyId, {
-      headers: { 'Accept': 'application/activity+json' },
-      signal: controller.signal,
-    });
+    const fetchHeaders: Record<string, string> = { 'Accept': 'application/activity+json' };
+    if (ownKeyId && ownPrivateKey) {
+      await signGetRequest({ url: new URL(keyId), keyId: ownKeyId, privateKey: ownPrivateKey, headers: fetchHeaders });
+    }
+    const resp = await fetch(keyId, { headers: fetchHeaders, signal: controller.signal });
     if (!resp.ok) throw new Error(`Failed to fetch actor key: ${resp.status}`);
     actorDoc = await resp.json();
   } finally {

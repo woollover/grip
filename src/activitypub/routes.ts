@@ -4,7 +4,7 @@ import type { ApConfig } from './config';
 import { getKeyPair } from './keys';
 import { buildActor, buildNote, buildOrderedCollection } from './objects';
 import type { MicroPostRow } from './objects';
-import { buildOutbox } from './outbox';
+import { buildOutbox, buildOutboxPage } from './outbox';
 import { handleInbox } from './inbox';
 
 function wantsActivityJson(request: Request): boolean {
@@ -53,14 +53,15 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
   });
 
   // Outbox
-  app.get('/activitypub/outbox', ({ request }) => {
+  app.get('/activitypub/outbox', ({ request, query }) => {
     if (!wantsActivityJson(request)) {
       return new Response(null, {
         status: 302,
         headers: { Location: '/micro' },
       });
     }
-    return new Response(JSON.stringify(buildOutbox(db, cfg)), {
+    const body = query.page === 'true' ? buildOutboxPage(db, cfg) : buildOutbox(db, cfg);
+    return new Response(JSON.stringify(body), {
       headers: { 'Content-Type': AP_CONTENT_TYPE },
     });
   });

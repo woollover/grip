@@ -49,7 +49,7 @@ import {
   handleSiteConfigUpdate,
   handleThemeChange,
 } from "./routes/settings";
-import { renderRepliesIndex, handleReplyToggle } from "./routes/replies";
+import { renderRepliesIndex, handleReplyToggle, renderFollowersIndex } from "./routes/replies";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
 
@@ -374,7 +374,15 @@ export function createAuthorApp(
     });
   });
 
-  // ── Replies (ActivityPub) ───────────────────────────────────────────────────
+  // ── ActivityPub author views ────────────────────────────────────────────────
+  if (apCfg) {
+    app.get("/followers", ({ cookie }) => {
+      const guard = requireAuth(cv(cookie));
+      if (guard) return guard;
+      return html(renderFollowersIndex(db));
+    });
+  }
+
   if (apCfg?.acceptReplies) {
     app.get("/replies", ({ cookie }) => {
       const guard = requireAuth(cv(cookie));

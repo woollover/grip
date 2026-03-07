@@ -20,7 +20,7 @@ export function buildActor(cfg: ApConfig, publicKeyPem: string): object {
     url: cfg.baseUrl,
     inbox: `${cfg.baseUrl}/activitypub/inbox`,
     outbox: `${cfg.baseUrl}/activitypub/outbox`,
-    followers: `${cfg.actorUrl}/followers`,
+    followers: `${cfg.baseUrl}/activitypub/followers`,
     publicKey: {
       id: `${cfg.actorUrl}#main-key`,
       owner: cfg.actorUrl,
@@ -38,7 +38,7 @@ export function buildNote(cfg: ApConfig, post: MicroPostRow): object {
     content: post.body_html,
     published: new Date(post.created_at).toISOString(),
     to: [AS_PUBLIC],
-    cc: [`${cfg.actorUrl}/followers`],
+    cc: [`${cfg.baseUrl}/activitypub/followers`],
     url: `${cfg.baseUrl}/micro#${post.id}`,
   };
 }
