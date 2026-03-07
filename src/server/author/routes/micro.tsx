@@ -32,7 +32,11 @@ export function renderMicroIndex(db: Database): JSX.Element {
                 <button class="outline secondary" style="padding:0.2rem 0.6rem">Retract</button>
               </form>
             )
-            : <em>(retracted)</em>
+            : (
+              <form method="POST" action={`/micro/${p.id}/restore`}>
+                <button class="outline" style="padding:0.2rem 0.6rem">Restore</button>
+              </form>
+            )
           }
         </article>
       ))}
@@ -56,5 +60,13 @@ export function handleMicroRetract(
   id: string
 ): void {
   const event = { type: 'MicroPostRetracted' as const, id };
+  commitEvent(db, store, event);
+}
+
+export function handleMicroRestore(
+  db: Database, store: EventStore,
+  id: string
+): void {
+  const event = { type: 'MicroPostRestored' as const, id };
   commitEvent(db, store, event);
 }

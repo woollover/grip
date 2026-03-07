@@ -79,6 +79,12 @@ export function applyEvent(db: Database, event: GripEvent, createdAt: number): v
       `).run(event.id);
       break;
     }
+    case 'MicroPostRestored': {
+      db.prepare(`
+        UPDATE micro_posts SET status = 'active' WHERE id = ?
+      `).run(event.id);
+      break;
+    }
     case 'PageCreated': {
       db.prepare(`
         INSERT OR REPLACE INTO pages (id, slug, title, body_md, body_html, status, created_at, updated_at)

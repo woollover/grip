@@ -10,6 +10,7 @@ export type GripEvent =
   // Micro-posts
   | { type: 'MicroPostCreated';   id: string; body: string }
   | { type: 'MicroPostRetracted'; id: string }   // exists, hidden — NOT deleted
+  | { type: 'MicroPostRestored';  id: string }   // un-retract — full history preserved
 
   // Static pages
   | { type: 'PageCreated';        id: string; title: string; slug: string; body: string }

@@ -28,6 +28,7 @@ import {
   renderMicroIndex,
   handleMicroCreate,
   handleMicroRetract,
+  handleMicroRestore,
 } from "./routes/micro";
 import {
   renderPagesIndex,
@@ -268,6 +269,13 @@ export function createAuthorApp(
     const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleMicroRetract(db, store, params.id);
+    return new Response(null, { status: 302, headers: { Location: "/micro" } });
+  });
+
+  app.post("/micro/:id/restore", ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    handleMicroRestore(db, store, params.id);
     return new Response(null, { status: 302, headers: { Location: "/micro" } });
   });
 
