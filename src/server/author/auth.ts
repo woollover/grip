@@ -1,6 +1,6 @@
 import { compare } from 'bcryptjs';
+import { timingSafeEqual } from 'crypto';
 import type { Database } from 'bun:sqlite';
-import type { Context } from 'elysia';
 
 // In-memory rate limiter: ip → { count, lockedUntil }
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
@@ -55,9 +55,11 @@ export function destroySession(db: Database): void {
 export function verifySession(db: Database, cookie: string | undefined): boolean {
   if (!cookie) return false;
   const stored = getSessionToken(db);
-  if (!stored || stored !== cookie) return false;
-  const expiry = getSessionExpiry(db);
-  return Date.now() < expiry;
+  if (!stored) return false;
+  const a = Buffer.from(stored);
+  const b = Buffer.from(cookie);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
+  return Date.now() < getSessionExpiry(db);
 }
 
 export async function verifyPassphrase(db: Database, submitted: string): Promise<boolean> {

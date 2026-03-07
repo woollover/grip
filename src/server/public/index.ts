@@ -29,9 +29,16 @@ function getSiteConfig(db: Database): {
   };
 }
 
+const SECURITY_HEADERS = {
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Content-Security-Policy": "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'",
+};
+
 function html(content: string): Response {
   return new Response(content, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: { "Content-Type": "text/html; charset=utf-8", ...SECURITY_HEADERS },
   });
 }
 
