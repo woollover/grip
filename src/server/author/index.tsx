@@ -98,7 +98,7 @@ export function createAuthorApp(
     ) {
       return Response.redirect("/dashboard", 302);
     }
-    return html(renderLoginPage(false, false));
+    return html(renderLoginPage(false, false, db));
   });
 
   app.post("/login", async ({ body, request }) => {
@@ -106,7 +106,7 @@ export function createAuthorApp(
     const passphrase = (body as { passphrase?: string }).passphrase ?? "";
 
     if (isLockedOut(ip)) {
-      return new Response(renderLoginPage(false, true), {
+      return new Response(renderLoginPage(false, true, db), {
         status: 429,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
@@ -117,7 +117,7 @@ export function createAuthorApp(
 
     if (!ok) {
       recordFailedAttempt(ip);
-      return new Response(renderLoginPage(true, false), {
+      return new Response(renderLoginPage(true, false, db), {
         status: 401,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });

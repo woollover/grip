@@ -168,12 +168,12 @@ export function renderThemeSettings(db: Database): JSX.Element {
     colorMuted:  custom?.colorMuted  ?? defaults.colorMuted,
   };
 
-  const presetMeta: { name: ThemeName; label: string }[] = [
-    { name: 'coder',     label: 'Coder'     },
-    { name: 'light',     label: 'Light'     },
-    { name: 'dark',      label: 'Dark'      },
+  const lightPresets: { name: ThemeName; label: string }[] = [
     { name: 'literary',  label: 'Literary'  },
     { name: 'ink',       label: 'Ink'       },
+  ];
+  const darkPresets: { name: ThemeName; label: string }[] = [
+    { name: 'coder',     label: 'Coder'     },
     { name: 'cyberpunk', label: 'Cyberpunk' },
   ];
 
@@ -256,17 +256,32 @@ export function renderThemeSettings(db: Database): JSX.Element {
         <button type="submit" form="theme-form">Save theme</button>
       </div>
 
-      <section style="margin-bottom:1rem">
-        <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.5rem">Presets</p>
-        <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
-          {presetMeta.map(p => (
-            <button type="button"
-              class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
-              style="padding:0.2rem 0.65rem;font-size:0.75rem"
-              onclick={`applyPreset('${p.name}')`}>
-              {p.label}
-            </button>
-          ))}
+      <section style="margin-bottom:1rem;display:flex;gap:1.5rem;align-items:flex-start">
+        <div>
+          <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.5;margin-bottom:0.4rem">Light</p>
+          <div style="display:flex;gap:0.3rem">
+            {lightPresets.map(p => (
+              <button type="button"
+                class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
+                style="padding:0.2rem 0.65rem;font-size:0.75rem"
+                onclick={`applyPreset('${p.name}')`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.5;margin-bottom:0.4rem">Dark</p>
+          <div style="display:flex;gap:0.3rem">
+            {darkPresets.map(p => (
+              <button type="button"
+                class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
+                style="padding:0.2rem 0.65rem;font-size:0.75rem"
+                onclick={`applyPreset('${p.name}')`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -381,8 +396,8 @@ export function handleThemeChange(
     colorAccent?: string; colorBg?: string; colorText?: string; colorMuted?: string;
   }
 ): void {
-  const validThemes: ThemeName[] = ['light', 'dark', 'coder', 'cyberpunk', 'literary', 'ink'];
-  const theme = validThemes.includes(body.theme as ThemeName) ? (body.theme as ThemeName) : 'light';
+  const validThemes: ThemeName[] = ['literary', 'ink', 'coder', 'cyberpunk', 'light', 'dark'];
+  const theme = validThemes.includes(body.theme as ThemeName) ? (body.theme as ThemeName) : 'literary';
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('theme', theme);
 
   const custom: ThemeCustom = {};

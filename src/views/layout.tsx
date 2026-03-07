@@ -78,7 +78,7 @@ a { transition: color 0.15s; }
   border-bottom: 1px solid var(--pico-muted-border-color);
 }
 .site-header nav {
-  padding: 1.1rem 0;
+  padding: 0.8rem 0;
   align-items: center;
 }
 .site-header nav ul { margin: 0; gap: 1.5rem; }
@@ -101,10 +101,10 @@ a { transition: color 0.15s; }
 .layout-wrap {
   display: grid;
   grid-template-columns: 1fr 210px;
-  gap: 4rem;
+  gap: 3rem;
   align-items: start;
-  padding-top: 3rem;
-  padding-bottom: 4rem;
+  padding-top: 2rem;
+  padding-bottom: 3rem;
 }
 @media (max-width: 760px) {
   .layout-wrap { grid-template-columns: 1fr; gap: 2.5rem; }
@@ -128,7 +128,7 @@ a { transition: color 0.15s; }
     position: static;
   }
 }
-.sb-section { margin-bottom: 1.75rem; }
+.sb-section { margin-bottom: 1.25rem; }
 .sb-desc { color: var(--pico-muted-color); line-height: 1.6; margin: 0; font-size: 0.8rem; }
 .sb-label {
   font-size: 0.6rem;
@@ -199,7 +199,7 @@ a { transition: color 0.15s; }
 /* ── Note stream ── */
 .note-stream { list-style: none; padding: 0; margin: 0; }
 .note-stream li {
-  padding: 1.35rem 0;
+  padding: 0.9rem 0;
   border-bottom: 1px solid color-mix(in srgb, var(--pico-muted-border-color) 60%, transparent);
 }
 .note-stream li:last-child { border-bottom: none; }
@@ -255,8 +255,8 @@ a { transition: color 0.15s; }
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 2.5rem;
-  padding-top: 1.25rem;
+  margin-top: 1.75rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--pico-muted-border-color);
   font-size: 0.8rem;
 }
