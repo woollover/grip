@@ -134,9 +134,26 @@ else
 fi
 echo
 
-# ── Step 7: systemd service ───────────────────────────────────────────────────
+# ── Step 7: Firewall ──────────────────────────────────────────────────────────
 hr
-say "${BOLD}Step 7 — Systemd service${RESET}"
+say "${BOLD}Step 7 — Firewall${RESET}"
+hr
+echo
+info "Configuring UFW firewall…"
+apt-get install -y -qq ufw
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp   comment 'SSH'
+ufw allow 80/tcp   comment 'HTTP (Caddy ACME)'
+ufw allow 443/tcp  comment 'HTTPS'
+ufw --force enable
+ok "Firewall active. Ports 22, 80, 443 open. Ports 3000/4000 are internal only."
+echo
+
+# ── Step 8: systemd service ───────────────────────────────────────────────────
+hr
+say "${BOLD}Step 8 — Systemd service${RESET}"
 hr
 echo
 info "Installing grip.service…"
