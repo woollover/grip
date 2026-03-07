@@ -144,16 +144,25 @@ Server  Server
 
 ## Quick Start
 
-### Prerequisites
+### Install (production — Linux VPS)
 
-Install [Bun](https://bun.sh):
+One command installs everything:
 
 ```sh
-curl -fsSL https://bun.sh/install | bash
-export PATH="$HOME/.bun/bin:$PATH"
+bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh)
 ```
 
-### Install
+Then run the setup wizard:
+
+```sh
+su - grip -c '/opt/grip/grip setup'
+```
+
+See [`docs/install.md`](docs/install.md) for the full step-by-step guide.
+
+### Install (local / development)
+
+Requires [Bun](https://bun.sh):
 
 ```sh
 git clone https://github.com/woollover/grip.git
@@ -162,8 +171,6 @@ bun install
 ```
 
 ### Setup
-
-Run the interactive setup wizard once to configure your site and set your passphrase:
 
 ```sh
 bun run src/cli/index.ts setup
@@ -220,14 +227,27 @@ Short notes, no file required. Published immediately.
 
 ## CLI Reference
 
+**On a production server (binary):**
+
 | Command | Description |
 |---------|-------------|
-| `bun run src/cli/index.ts setup` | Interactive wizard: configure site, set passphrase, init database |
-| `bun run src/main.ts` | Start both public (:3000) and author (:4000) servers |
-| `bun run src/cli/index.ts post <file.md>` | Create an article from a Markdown file (saved as draft) |
-| `bun run src/cli/index.ts micro "text"` | Publish a micronote immediately |
-| `bun run src/cli/index.ts rebuild` | Rebuild all projection tables by replaying the event store |
-| `bun run src/cli/index.ts status` | Print the last 20 events with type, ID, and timestamp |
+| `grip setup` | Interactive wizard: configure site, set passphrase, init database |
+| `grip serve` | Start both public (:3000) and author (:4000) servers |
+| `grip post <file.md>` | Create an article from a Markdown file (saved as draft) |
+| `grip micro "text"` | Publish a micronote immediately |
+| `grip rebuild` | Rebuild all projection tables by replaying the event store |
+| `grip status` | Print the last 20 events with type, ID, and timestamp |
+
+**In development (Bun source):**
+
+| Command | Description |
+|---------|-------------|
+| `bun run src/cli/index.ts setup` | Same as above |
+| `bun run src/main.ts` | Start both servers |
+| `bun run src/cli/index.ts post <file.md>` | Same as above |
+| `bun run src/cli/index.ts micro "text"` | Same as above |
+| `bun run src/cli/index.ts rebuild` | Same as above |
+| `bun run src/cli/index.ts status` | Same as above |
 
 ---
 
@@ -262,8 +282,10 @@ For a production setup you need a Linux server, a domain name, and Caddy for TLS
 **One-command installer** (run as root on a fresh Ubuntu 22.04 VPS):
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh) https://github.com/woollover/grip
+bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh)
 ```
+
+Downloads the latest pre-built binary — no git, no Bun, no build step required.
 
 Then run the setup wizard and configure Caddy. See [`docs/install.md`](docs/install.md) for the full non-technical step-by-step guide.
 

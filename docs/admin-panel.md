@@ -208,16 +208,16 @@ If you have SSH access to the server, you can also use the command line:
 
 ```bash
 # Post a Markdown file as a draft article
-bun run src/cli/index.ts post my-article.md
+/opt/grip/grip post my-article.md
 
 # Post a quick note
-bun run src/cli/index.ts micro "Just had the best espresso"
+/opt/grip/grip micro "Just had the best espresso"
 
 # Show recent events
-bun run src/cli/index.ts status
+/opt/grip/grip status
 
 # Rebuild all projections from scratch (use after a schema update)
-bun run src/cli/index.ts rebuild
+/opt/grip/grip rebuild
 ```
 
 ---

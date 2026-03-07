@@ -144,7 +144,7 @@ async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): P
   const keyId = `${cfg.actorUrl}#main-key`;
   const url = new URL(inboxUrl);
 
-  for (const post of posts.reverse()) {
+  for (const post of posts) {
     const note = buildNote(cfg, post);
     const activity = buildCreateActivity(cfg, note, `${cfg.baseUrl}/activitypub/activities/${ulid()}`);
     const body = JSON.stringify(activity);

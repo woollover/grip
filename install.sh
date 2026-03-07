@@ -20,7 +20,7 @@ hr()   { echo -e "  ${DIM}$(printf '─%.0s' {1..54})${RESET}"; }
 # ── Config ────────────────────────────────────────────────────────────────────
 GRIP_USER="grip"
 GRIP_DIR="/opt/grip"
-REPO_URL="${1:-}"
+GITHUB_REPO="woollover/grip"
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 echo
@@ -35,19 +35,14 @@ if [[ $EUID -ne 0 ]]; then
   die "Please run this script as root (or with sudo)."
 fi
 
-# ── Check: repo URL ───────────────────────────────────────────────────────────
-if [[ -z "$REPO_URL" ]]; then
-  die "Usage: bash install.sh <repo-url>\n     e.g.  bash install.sh https://github.com/you/grip"
-fi
-
 # ── Step 1: System packages ───────────────────────────────────────────────────
 hr
 say "${BOLD}Step 1 — System packages${RESET}"
 hr
 echo
-info "Making sure git and curl are available…"
+info "Making sure curl and tar are available…"
 apt-get update -qq
-apt-get install -y -qq git curl unzip
+apt-get install -y -qq curl tar
 ok "System packages ready."
 echo
 
@@ -65,67 +60,53 @@ else
 fi
 echo
 
-# ── Step 3: Clone or update repo ─────────────────────────────────────────────
+# ── Step 3: Download latest release ───────────────────────────────────────────
 hr
-say "${BOLD}Step 3 — GRIP source code${RESET}"
+say "${BOLD}Step 3 — Download GRIP${RESET}"
 hr
 echo
-if [[ -d "$GRIP_DIR/.git" ]]; then
-  info "GRIP already lives at ${GRIP_DIR} — pulling latest changes…"
-  git -C "$GRIP_DIR" pull --ff-only
-  ok "Repository updated."
-else
-  info "Cloning GRIP into ${GRIP_DIR}…"
-  git clone "$REPO_URL" "$GRIP_DIR"
-  ok "Repository cloned."
+
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)  ASSET="grip-linux-x64.tar.gz" ;;
+  aarch64) ASSET="grip-linux-arm64.tar.gz" ;;
+  *) die "Unsupported architecture: ${ARCH}. Build from source instead." ;;
+esac
+
+info "Detected architecture: ${ARCH}"
+info "Fetching latest release from github.com/${GITHUB_REPO}…"
+
+DOWNLOAD_URL=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
+  | grep -o "\"browser_download_url\": \"[^\"]*${ASSET}\"" \
+  | cut -d'"' -f4)
+
+if [[ -z "$DOWNLOAD_URL" ]]; then
+  die "Could not find a release asset for ${ASSET}. Check github.com/${GITHUB_REPO}/releases"
 fi
+
+info "Downloading ${ASSET}…"
+curl -fsSL "$DOWNLOAD_URL" -o /tmp/grip.tar.gz
+ok "Downloaded."
+echo
+
+# ── Step 4: Extract ───────────────────────────────────────────────────────────
+hr
+say "${BOLD}Step 4 — Install${RESET}"
+hr
+echo
+
+mkdir -p "$GRIP_DIR"
+info "Extracting to ${GRIP_DIR}…"
+tar -xzf /tmp/grip.tar.gz -C "$GRIP_DIR"
+chmod +x "$GRIP_DIR/grip"
 chown -R "$GRIP_USER:$GRIP_USER" "$GRIP_DIR"
-ok "Ownership set to '${GRIP_USER}'."
+rm /tmp/grip.tar.gz
+ok "GRIP installed at ${GRIP_DIR}."
 echo
 
-# ── Step 4: Install Bun ───────────────────────────────────────────────────────
+# ── Step 5: Config file ───────────────────────────────────────────────────────
 hr
-say "${BOLD}Step 4 — Bun runtime${RESET}"
-hr
-echo
-install_bun_for_user() {
-  local user="$1"
-  local home
-  home=$(eval echo "~$user")
-  if su - "$user" -c 'export PATH="$HOME/.bun/bin:$PATH"; command -v bun' &>/dev/null; then
-    local ver
-    ver=$(su - "$user" -c 'export PATH="$HOME/.bun/bin:$PATH"; bun --version')
-    ok "Bun ${ver} already installed for '${user}'."
-  else
-    info "Installing Bun for '${user}'…"
-    su - "$user" -c 'curl -fsSL https://bun.sh/install | bash' 2>&1 | grep -E 'install|Done|bun' | while read -r line; do
-      say "  ${DIM}${line}${RESET}"
-    done
-    local ver
-    ver=$(su - "$user" -c 'export PATH="$HOME/.bun/bin:$PATH"; bun --version')
-    ok "Bun ${ver} installed for '${user}'."
-  fi
-}
-install_bun_for_user "$GRIP_USER"
-echo
-
-# ── Step 5: Install dependencies ─────────────────────────────────────────────
-hr
-say "${BOLD}Step 5 — Dependencies${RESET}"
-hr
-echo
-info "Running bun install in ${GRIP_DIR}…"
-su - "$GRIP_USER" -c "
-  export PATH=\"\$HOME/.bun/bin:\$PATH\"
-  cd '$GRIP_DIR'
-  bun install --frozen-lockfile 2>&1 | tail -3
-"
-ok "All dependencies installed."
-echo
-
-# ── Step 6: Config file ───────────────────────────────────────────────────────
-hr
-say "${BOLD}Step 6 — Configuration file${RESET}"
+say "${BOLD}Step 5 — Configuration file${RESET}"
 hr
 echo
 if [[ -f "$GRIP_DIR/grip.toml" ]]; then
@@ -138,9 +119,9 @@ else
 fi
 echo
 
-# ── Step 7: systemd service ───────────────────────────────────────────────────
+# ── Step 6: systemd service ───────────────────────────────────────────────────
 hr
-say "${BOLD}Step 7 — Systemd service${RESET}"
+say "${BOLD}Step 6 — Systemd service${RESET}"
 hr
 echo
 info "Installing grip.service…"
@@ -158,7 +139,7 @@ echo
 say "GRIP is installed. One step left before you can start:"
 echo
 say "  ${BOLD}Run the setup wizard:${RESET}"
-say "  ${CYAN}su - $GRIP_USER -c 'cd $GRIP_DIR && bun run src/cli/index.ts setup'${RESET}"
+say "  ${CYAN}su - $GRIP_USER -c '/opt/grip/grip setup'${RESET}"
 echo
 say "The wizard will:"
 say "  ${DIM}• Ask for your site title, description and domain${RESET}"
@@ -168,7 +149,7 @@ echo
 say "After the wizard, start GRIP:"
 say "  ${CYAN}systemctl start grip${RESET}"
 echo
-say "Then point Caddy at it (see ${DIM}Caddyfile.example${RESET})."
+say "Then point Caddy at it (see ${DIM}${GRIP_DIR}/Caddyfile.example${RESET})."
 echo
 hr
 echo

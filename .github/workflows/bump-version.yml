@@ -1,0 +1,48 @@
+name: Bump Minor Version
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  bump-version:
+    # Skip commits made by this workflow itself (version bump commits)
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump minor version
+        id: version
+        run: |
+          OLD=$(node -p "require('./package.json').version")
+          NEW=$(node -p "
+            const v = '$OLD'.split('.');
+            v[1] = String(Number(v[1]) + 1);
+            v[2] = '0';
+            v.join('.')
+          ")
+          sed -i "s/\"version\": \"$OLD\"/\"version\": \"$NEW\"/" package.json
+          echo "new_version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumped $OLD → $NEW"
+
+      - name: Commit and tag
+        run: |
+          git add package.json
+          git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }} [skip ci]"
+          git tag "v${{ steps.version.outputs.new_version }}"
+          git push
+          git push --tags
