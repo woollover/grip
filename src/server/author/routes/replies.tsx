@@ -4,7 +4,7 @@ import { paginationNav } from '../../../views/shared';
 
 const PAGE_SIZE = 20;
 
-export function renderFollowersIndex(db: Database, page = 1): JSX.Element {
+export function renderContactsIndex(db: Database, page = 1): JSX.Element {
   const total = (db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number }).cnt;
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -15,15 +15,15 @@ export function renderFollowersIndex(db: Database, page = 1): JSX.Element {
   const content = (
     <div>
       <div class="page-hd">
-        <h2 style="margin:0">Followers</h2>
-        <small style="color:var(--pico-muted-color)">{total} follower{total !== 1 ? 's' : ''}</small>
+        <h2 style="margin:0">Contacts</h2>
+        <small style="color:var(--pico-muted-color)">{total} contact{total !== 1 ? 's' : ''}</small>
       </div>
       {followers.length === 0
-        ? <p style="color:var(--pico-muted-color)">No followers yet.</p>
+        ? <p style="color:var(--pico-muted-color)">No contacts yet.</p>
         : (
           <table>
             <thead>
-              <tr><th>Actor</th><th>Inbox</th><th>Followed</th></tr>
+              <tr><th>Actor</th><th>Inbox</th><th>Since</th></tr>
             </thead>
             <tbody>
               {followers.map(f => (
@@ -37,11 +37,11 @@ export function renderFollowersIndex(db: Database, page = 1): JSX.Element {
           </table>
         )
       }
-      {paginationNav(page, total, PAGE_SIZE, '/followers')}
+      {paginationNav(page, total, PAGE_SIZE, '/contacts')}
     </div>
   );
 
-  return authorLayout('Followers', content, db);
+  return authorLayout('Contacts', content, db);
 }
 
 export function renderRepliesIndex(db: Database, page = 1): JSX.Element {

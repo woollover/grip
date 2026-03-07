@@ -82,7 +82,7 @@ The following endpoints are added to the public server:
 | `/.well-known/webfinger` | Fediverse account discovery |
 | `/activitypub/actor` | Your identity as a Person object |
 | `/activitypub/outbox` | Your notes as an ActivityStreams collection |
-| `/activitypub/followers` | Follower count |
+| `/activitypub/followers` | Contact count |
 | `/activitypub/notes/:id` | Individual note |
 | `/activitypub/inbox` | Receives Follow, Undo, Create, Delete from remote servers |
 

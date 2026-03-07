@@ -19,7 +19,7 @@ If you want a space on the web that is genuinely yours — not rented, not moder
 - **Not a platform.** There is no GRIP.com where you sign up and get a subdomain.
 - **Not a SaaS.** Nothing phones home. No subscription. No usage metrics sent anywhere.
 - **Not a blog engine in the WordPress sense.** There is no plugin marketplace, no theme store, no ecosystem with commercial interests.
-- **Not a social network.** There are no feeds, no likes, no follower counts, no reply threads designed to capture attention.
+- **Not a social network.** There are no feeds, no likes, no contact counts, no reply threads designed to capture attention.
 - **Not a CMS for teams.** It is single-author by design. If you want multi-author, fork it and make it so.
 - **Not something that requires the cloud.** It runs fully offline. A network connection is optional.
 
@@ -80,8 +80,8 @@ GRIP favors clarity and durability over clever abstractions. The formats it uses
 **Syndication**
 - Three RSS feeds: all content, articles only, notes only
 - Full ActivityPub federation — make your notes followable from Mastodon and the fediverse (opt-in)
-- New posts delivered to followers automatically
-- Recent posts backfilled to new followers on follow
+- New posts delivered to contacts automatically
+- Recent posts backfilled to new contacts on follow
 - Optional fediverse reply collection with owner moderation
 
 **Operations**
@@ -266,7 +266,7 @@ accept_replies = true            # collect fediverse replies as comments
 
 Restart GRIP. The console will confirm: `ActivityPub enabled as @you@yourdomain.com`.
 
-The author panel's **Settings** page shows your federation status, follower count, and a link to the followers list. The **Replies** panel lets you moderate incoming replies.
+The author panel's **Settings** page shows your federation status, contact count, and a link to the contacts list. The **Replies** panel lets you moderate incoming replies.
 
 ActivityPub requires a public HTTPS domain. For local testing, use a cloudflared tunnel:
 ```sh

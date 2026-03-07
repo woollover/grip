@@ -27,7 +27,7 @@ All data lives in one file: `data/grip.sqlite`.
 | `pages` | Projection of static pages |
 | `media` | Metadata for uploaded files |
 | `config` | Site settings (title, description, domain, session token hash) |
-| `ap_followers` | Fediverse followers (actor URL, inbox URL, follow date) |
+| `ap_followers` | Fediverse contacts (actor URL, inbox URL, follow date) |
 | `ap_replies` | Inbound fediverse replies to notes |
 
 **No user data is collected.** No analytics, no tracking, no cookies on the public site.
@@ -73,7 +73,7 @@ Both servers set:
 
 ## Known Limitations
 
-- **No retry queue**: if an ActivityPub delivery fails (follower inbox unreachable), the post is not retried.
+- **No retry queue**: if an ActivityPub delivery fails (contact inbox unreachable), the post is not retried.
 - **No rate limiting** on the public server beyond the login brute-force protection.
 - **No automated backup**: `data/grip.sqlite` must be backed up manually.
 - **No test suite**: security controls are verified by code review and manual testing, not automated tests.

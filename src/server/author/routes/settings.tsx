@@ -20,13 +20,13 @@ function getConfig(db: Database): { title: string; description: string; domain: 
   };
 }
 
-function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; followers: number } | null {
+function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; contacts: number } | null {
   const enabled = (db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as { value: string } | null)?.value;
   if (!enabled) return null;
   const username = (db.prepare("SELECT value FROM config WHERE key = 'ap_username'").get() as { value: string } | null)?.value ?? '';
   const domain = (db.prepare("SELECT value FROM config WHERE key = ?").get('domain') as { value: string } | null)?.value ?? '';
   const { cnt } = db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number };
-  return { enabled: true, username, domain, followers: cnt };
+  return { enabled: true, username, domain, contacts: cnt };
 }
 
 export function renderSettings(db: Database): JSX.Element {
@@ -40,10 +40,10 @@ export function renderSettings(db: Database): JSX.Element {
           ActivityPub
           <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--pico-primary);border:1px solid var(--pico-primary);border-radius:3px;padding:0.1rem 0.4rem">Active</span>
         </h3>
-        <a href="/followers" role="button" class="outline secondary">Followers →</a>
+        <a href="/contacts" role="button" class="outline secondary">Contacts →</a>
       </div>
       <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.4rem">
-        Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.followers} follower{ap.followers !== 1 ? 's' : ''}
+        Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.contacts} contact{ap.contacts !== 1 ? 's' : ''}
       </p>
       <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">
         Managed via <code>grip.toml</code> — restart required to change settings.

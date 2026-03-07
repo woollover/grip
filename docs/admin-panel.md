@@ -22,7 +22,7 @@ The top bar is always visible:
 GRIP  |  Articles  |  Micro  |  Pages  |  Media  |  Settings  |  [Logout]
 ```
 
-If ActivityPub is enabled, **Followers** and **Replies** also appear.
+If ActivityPub is enabled, **Contacts** and **Replies** also appear.
 
 ---
 
@@ -101,7 +101,7 @@ Notes are published immediately — there is no draft state.
 
 Click **Retract** next to any note to remove it from the public site. The note is marked as retracted in the database (the event history is preserved — nothing is ever deleted).
 
-If ActivityPub is enabled, posting a note automatically delivers it to all followers' inboxes.
+If ActivityPub is enabled, posting a note automatically delivers it to all contacts' inboxes.
 
 ---
 
@@ -170,14 +170,14 @@ Click **Customize →** to open the theme editor.
 
 If ActivityPub is enabled in `grip.toml`, this section shows:
 - Your federated identity (`@username@domain`)
-- Current follower count, with a link to the followers list
+- Current contact count, with a link to the contacts list
 - A note that settings are managed via `grip.toml`
 
 If it's not enabled, the section shows a code snippet you can copy into `grip.toml` to activate it.
 
 ---
 
-## Followers (ActivityPub only)
+## Contacts (ActivityPub only)
 
 A table of everyone who follows you on the fediverse:
 - Actor URL (links to their profile)

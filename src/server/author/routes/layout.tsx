@@ -50,7 +50,7 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
               <li><a href="/pages">Pages</a></li>
               <li><a href="/media">Media</a></li>
               <li><a href="/settings">Settings</a></li>
-              {apEnabled && <li><a href="/followers">Followers</a></li>}
+              {apEnabled && <li><a href="/contacts">Contacts</a></li>}
               {apEnabled && <li><a href="/replies">Replies</a></li>}
               <li style="margin-left:auto">
                 <form method="POST" action="/logout" style="margin:0">

@@ -49,7 +49,7 @@ import {
   handleSiteConfigUpdate,
   handleThemeChange,
 } from "./routes/settings";
-import { renderRepliesIndex, handleReplyToggle, renderFollowersIndex } from "./routes/replies";
+import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
 import { version as currentVersion } from "../../../package.json";
@@ -381,11 +381,11 @@ export function createAuthorApp(
 
   // ── ActivityPub author views ────────────────────────────────────────────────
   if (apCfg) {
-    app.get("/followers", ({ cookie, query }) => {
+    app.get("/contacts", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
       const page = Math.max(1, parseInt(query.page as string) || 1);
-      return html(renderFollowersIndex(db, page));
+      return html(renderContactsIndex(db, page));
     });
 
     app.get("/replies", ({ cookie, query }) => {
