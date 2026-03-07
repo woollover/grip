@@ -50,42 +50,47 @@ GRIP favors clarity and durability over clever abstractions. The formats it uses
 ## Feature Set
 
 **Publishing**
-- Long-form posts from Markdown files (`grip post article.md`)
-- Short-form micronotes from the command line (`grip micro "a quick thought"`)
-- Drafts: posts can be staged before being made public
-- Scheduled visibility (set a future publish date)
-- Tags and basic taxonomy
+- Long-form articles from Markdown, with draft/publish/unpublish lifecycle
+- Short-form micronotes — published immediately, retractable
+- Static pages (About, Contact, etc.) with public nav integration
+- Tags and filtering
+- Media uploads (images, PDF, audio, video) with inline editor widget
+- Six visual themes with live preview and per-property customisation
 
 **Reading Experience**
 - Public server at port 3000 serves rendered HTML to visitors
-- Clean, readable typography via PicoCSS (vendored, no CDN)
-- Three theme presets: `light`, `dark`, `cyberpunk`
-- HTMX for lightweight interactivity (vendored, no CDN)
-- No JavaScript frameworks. No tracking scripts. No external requests.
+- Clean, readable prose with sidebar navigation
+- Paginated article and note lists with tag filtering
+- No JavaScript on the public site
+- No tracking scripts, no external requests, no CDN
 
 **Author Interface**
-- Separate author server at port 4000 (not exposed publicly)
-- Passphrase authentication with session cookie
-- Web UI for drafting, editing visibility, and reviewing post history
-- Full event log visible to the author
+- Separate author server at port 4000
+- Passphrase authentication with 7-day session cookie
+- Markdown editor with live preview (HTMX)
+- Article, page, and media management
+- Settings UI: site identity, theme, and ActivityPub status
 
 **Data Integrity**
 - Append-only SQLite event store (events are never deleted or modified)
 - ULID-based event IDs (sortable, collision-resistant)
 - Projections rebuilt from events at any time (`grip rebuild`)
-- If a projection table is corrupted or schema changes, rebuild from source of truth
+- WAL mode for safe concurrent reads
 
 **Syndication**
-- RSS feeds for all content, articles only, or micro-posts only (`/rss.xml`, `/articles/rss.xml`, `/micro/rss.xml`)
-- ActivityPub federation — make your micro-posts followable from Mastodon and the fediverse (opt-in, see [`docs/activitypub.md`](docs/activitypub.md))
-- Optional fediverse reply collection (disabled by default, owner-moderated)
+- Three RSS feeds: all content, articles only, notes only
+- Full ActivityPub federation — make your notes followable from Mastodon and the fediverse (opt-in)
+- New posts delivered to followers automatically
+- Recent posts backfilled to new followers on follow
+- Optional fediverse reply collection with owner moderation
 
 **Operations**
 - Single binary runtime: Bun
-- `grip status` to inspect the system state
+- `grip status` to inspect system state
 - `grip serve` to start both servers
 - Caddy reverse proxy configuration for production TLS
 - systemd service file for deployment as a system service
+- One-command VPS installer
 
 **No telemetry. No analytics. No external dependencies at runtime.**
 
@@ -93,7 +98,7 @@ GRIP favors clarity and durability over clever abstractions. The formats it uses
 
 ## Architecture
 
-GRIP uses event sourcing as its data model. Every action — posting, editing visibility, adding a tag — is recorded as an immutable event in SQLite. Projection tables (the readable views used by the servers) are derived from that event log and can be rebuilt at any time.
+GRIP uses event sourcing as its data model. Every action — posting, editing, publishing, following — is recorded as an immutable event in SQLite. Projection tables are derived from that event log and can be rebuilt at any time.
 
 ```
 CLI / Author UI
@@ -112,14 +117,14 @@ Server  Server
 ```
 
 **Two servers, two concerns:**
-
-- Port 3000 — public-facing, read-only, no auth required. This is what the internet sees. Caddy sits in front of it in production.
-- Port 4000 — author-facing, write operations, protected by passphrase + session cookie. Never exposed beyond localhost.
+- Port 3000 — public-facing, read-only, no auth required. This is what the internet sees.
+- Port 4000 — author-facing, write operations, protected by passphrase + session cookie.
 
 **Storage:**
-- One SQLite file: `grip.db`
+- One SQLite file: `data/grip.sqlite`
 - Event table: append-only, never mutated
 - Projection tables: derived, rebuildable with `grip rebuild`
+- Media files: on disk under `media/`
 
 **Tech stack:**
 - Runtime: [Bun](https://bun.sh)
@@ -129,8 +134,9 @@ Server  Server
 - Markdown rendering: markdown-it
 - CSS: PicoCSS (vendored)
 - Interactivity: HTMX (vendored)
-- Auth: bcryptjs passphrase hashing, session cookie
+- Auth: bcryptjs + constant-time session comparison
 - Event IDs: ULID
+- ActivityPub: HTTP Signatures (RSA-2048), signed GET and POST
 - Reverse proxy: Caddy (production)
 - Process management: systemd (production)
 
@@ -160,21 +166,21 @@ bun install
 Run the interactive setup wizard once to configure your site and set your passphrase:
 
 ```sh
-bun run cli setup
+bun run src/cli/index.ts setup
 ```
 
-The wizard walks through four steps:
-1. **Site identity** — title, description, domain (with sensible defaults)
+The wizard walks through:
+1. **Site identity** — title, description, domain
 2. **Server ports** — public site (default 3000) and author interface (default 4000)
 3. **Passphrase** — hashed with bcrypt, never stored in plain text
-4. **Confirm** — review and apply
+4. **ActivityPub** — optional fediverse federation
 
 This creates `data/grip.sqlite` (your database) and `grip.toml` (your config). Both are gitignored.
 
 ### Serve
 
 ```sh
-bun start
+bun run src/main.ts
 ```
 
 - Public site: http://localhost:3000
@@ -185,7 +191,7 @@ bun start
 Write a Markdown file with optional front matter, then:
 
 ```sh
-bun run cli post my-article.md
+bun run src/cli/index.ts post my-article.md
 ```
 
 Front matter (optional):
@@ -200,12 +206,12 @@ tags: writing, notes
 Your content here.
 ```
 
-The post is saved as a draft. Log in to the author interface at http://localhost:4000 to publish it.
+The post is saved as a draft. Log in to the author interface to publish it.
 
-### Publish a micronote
+### Post a micronote
 
 ```sh
-bun run cli micro "Had a good thought today. Writing it down."
+bun run src/cli/index.ts micro "Had a good thought today. Writing it down."
 ```
 
 Short notes, no file required. Published immediately.
@@ -215,13 +221,37 @@ Short notes, no file required. Published immediately.
 ## CLI Reference
 
 | Command | Description |
-|---|---|
-| `bun run cli setup` | Interactive wizard: configure site, set passphrase, init database |
-| `bun start` | Start both public (:3000) and author (:4000) servers |
-| `bun run cli post <file.md>` | Create an article from a Markdown file (saved as draft) |
-| `bun run cli micro "text"` | Publish a micronote immediately |
-| `bun run cli rebuild` | Rebuild all projection tables by replaying the event store |
-| `bun run cli status` | Print the last 20 events with type, ID and timestamp |
+|---------|-------------|
+| `bun run src/cli/index.ts setup` | Interactive wizard: configure site, set passphrase, init database |
+| `bun run src/main.ts` | Start both public (:3000) and author (:4000) servers |
+| `bun run src/cli/index.ts post <file.md>` | Create an article from a Markdown file (saved as draft) |
+| `bun run src/cli/index.ts micro "text"` | Publish a micronote immediately |
+| `bun run src/cli/index.ts rebuild` | Rebuild all projection tables by replaying the event store |
+| `bun run src/cli/index.ts status` | Print the last 20 events with type, ID, and timestamp |
+
+---
+
+## ActivityPub / Fediverse
+
+GRIP can federate with Mastodon and any other ActivityPub-compatible server. When enabled, people can follow your account from any fediverse app and your notes appear in their timeline.
+
+Enable it in `grip.toml`:
+
+```toml
+[activitypub]
+enabled        = true
+username       = "you"           # your handle: @you@yourdomain.com
+accept_replies = true            # collect fediverse replies as comments
+```
+
+Restart GRIP. The console will confirm: `ActivityPub enabled as @you@yourdomain.com`.
+
+The author panel's **Settings** page shows your federation status, follower count, and a link to the followers list. The **Replies** panel lets you moderate incoming replies.
+
+ActivityPub requires a public HTTPS domain. For local testing, use a cloudflared tunnel:
+```sh
+cloudflared tunnel --url http://localhost:3000
+```
 
 ---
 
@@ -229,40 +259,50 @@ Short notes, no file required. Published immediately.
 
 For a production setup you need a Linux server, a domain name, and Caddy for TLS.
 
-GRIP ships with a one-command installer that handles everything up to the setup wizard:
+**One-command installer** (run as root on a fresh Ubuntu 22.04 VPS):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh \
-  | sudo bash -s https://github.com/woollover/grip
+bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh) https://github.com/woollover/grip
 ```
 
-Then run the wizard and configure Caddy. See [`docs/deploy.md`](docs/deploy.md) for the full step-by-step guide.
+Then run the setup wizard and configure Caddy. See [`docs/install.md`](docs/install.md) for the full non-technical step-by-step guide.
 
-To enable fediverse federation after deploying, see [`docs/activitypub.md`](docs/activitypub.md).
-
-Deployment files at the project root:
+Deployment files:
 - `grip.service` — systemd unit file
 - `Caddyfile.example` — Caddy reverse proxy config
+- `docs/caddy.md` — Caddy setup and hardening guide
+
+---
+
+## Documentation
+
+| File | Contents |
+|------|----------|
+| [`docs/install.md`](docs/install.md) | Step-by-step installation from scratch, non-technical |
+| [`docs/public-site.md`](docs/public-site.md) | Every public route and feature explained |
+| [`docs/admin-panel.md`](docs/admin-panel.md) | Full author panel guide |
+| [`docs/caddy.md`](docs/caddy.md) | Caddy setup, security headers, IP restriction |
+| [`MANIFESTO.md`](MANIFESTO.md) | The philosophy behind GRIP |
 
 ---
 
 ## Honesty About Status
 
-GRIP is currently a proof of concept. It is functional but not battle-hardened.
+GRIP is functional and in active personal use. It is not battle-hardened at scale, but for a single-author personal site it is solid.
 
-**What works (PoC quality):**
-- Event store model and projection rebuilding
-- Two-server architecture
-- Post and micronote publishing via CLI
-- Passphrase auth on the author interface
-- Theme presets
+**What works:**
+- Full publishing workflow (articles, notes, pages, media)
+- Event sourcing with projection rebuilding
+- ActivityPub federation with signed fetches, backfill, and reply moderation
+- Theme customisation with live preview
+- RSS feeds, tag filtering, pagination throughout
+- Security: parameterized queries, constant-time session comparison, SSRF protection, MIME type validation, security response headers
 
-**What is not yet production-ready:**
-- No automated backup tooling (back up `data/grip.sqlite` yourself — it is just a file)
+**Known gaps:**
+- No retry queue for failed ActivityPub deliveries
 - No search
-- Error handling is minimal in the current build
 - No test suite beyond manual verification
-- ActivityPub: does not sign GET requests ("authorized fetch" mode on some Mastodon instances)
+- No automated backup tooling (back up `data/grip.sqlite` — it is just a file)
 
 Use it. Break it. Fix it. It is yours.
 
@@ -288,7 +328,7 @@ This choice is deliberate and coherent with the manifesto.
 
 The AGPL allows anyone to use, fork, modify, and run GRIP freely — on their own machine, their own server, in any context. The one restriction: if you modify GRIP and run it as a **network service** (i.e. a hosted platform for others), you must publish your source code to those users.
 
-This is the only restriction, and it targets the only scenario the manifesto explicitly warns against: someone taking this tool of sovereignty and turning it into a new platform that captures others. The license and the philosophy say the same thing.
+This targets the only scenario the manifesto explicitly warns against: someone taking this tool of sovereignty and turning it into a new platform that captures others. The license and the philosophy say the same thing.
 
 If you fork GRIP and run it for yourself, you owe nothing to anyone. It is yours.
 
