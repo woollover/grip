@@ -6,6 +6,7 @@ import {
   type ThemeName, type ThemeCustom,
   PRESET_DEFAULTS, readThemeCustom,
 } from '../../../core/themes';
+import { version as currentVersion } from '../../../../package.json';
 
 function getConfig(db: Database): { title: string; description: string; domain: string } {
   const get = (key: string, fallback: string) => {
@@ -103,6 +104,25 @@ accept_replies = true`}</pre>
       <hr />
 
       {apSection}
+
+      <hr />
+
+      <section>
+        <div class="page-hd" style="margin-bottom:0.5rem">
+          <h3>Updates</h3>
+          <button
+            class="outline secondary"
+            hx-get="/update-check"
+            hx-target="#update-result"
+            hx-swap="innerHTML"
+            hx-indicator="#update-result"
+          >Check</button>
+        </div>
+        <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.5rem">
+          Current version: <code safe>v{currentVersion}</code>
+        </p>
+        <p id="update-result" style="font-size:0.78rem;margin:0;color:var(--pico-muted-color)"></p>
+      </section>
     </div>
   );
 

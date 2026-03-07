@@ -52,6 +52,7 @@ import {
 import { renderRepliesIndex, handleReplyToggle, renderFollowersIndex } from "./routes/replies";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
+import { version as currentVersion } from "../../../package.json";
 
 const SESSION_COOKIE = "grip_session";
 const cv = (cookie: Record<string, { value?: string } | undefined>) =>
@@ -399,6 +400,40 @@ export function createAuthorApp(
       return new Response(null, { status: 302, headers: { Location: "/replies" } });
     });
   }
+
+  // ── Update check ─────────────────────────────────────────────────────────────
+  app.get("/update-check", async ({ cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/woollover/grip/releases/latest",
+        {
+          headers: { "User-Agent": "grip-update-check" },
+          signal: AbortSignal.timeout(5000),
+        },
+      );
+      if (!res.ok) throw new Error(`GitHub API responded ${res.status}`);
+      const data = (await res.json()) as { tag_name: string; html_url: string };
+      const latest = data.tag_name.replace(/^v/, "");
+
+      if (latest === currentVersion) {
+        return html(<span>v{currentVersion} — up to date ✓</span>);
+      }
+      return html(
+        <span style="color:var(--pico-primary)">
+          Update available: <strong safe>v{latest}</strong>
+          {" — "}
+          <a href={data.html_url} target="_blank" rel="noopener noreferrer">
+            Download →
+          </a>
+        </span>,
+      );
+    } catch {
+      return html(<span>Could not reach GitHub. Check your connection.</span>);
+    }
+  });
 
   return app;
 }

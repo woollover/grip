@@ -1,5 +1,7 @@
 # Security
 
+> For a detailed operator security guide covering authentication internals, rate limiting, hardening, and audit logging, see [`docs/security.md`](docs/security.md).
+
 ## Security Model
 
 GRIP is a single-author, self-hosted publishing system. The threat model is:

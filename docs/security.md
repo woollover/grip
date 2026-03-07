@@ -1,5 +1,7 @@
 # Security in GRIP
 
+> For the vulnerability reporting policy and a brief security overview, see [`SECURITY.md`](../SECURITY.md) at the repository root.
+
 This document explains how GRIP handles security: what it protects against, what mechanisms it uses, and — equally important — what it does not protect against. Read this before trusting GRIP with content that matters to you.
 
 ---
@@ -34,7 +36,7 @@ Your passphrase is hashed using `bcryptjs` with a cost factor of 12 before it is
 
 The raw passphrase is never stored — not in the database, not in a log file, not in `grip.toml`. Only the bcrypt hash is persisted, in the `config` table of the SQLite database.
 
-If you forget your passphrase, there is no "forgot password" flow. You reset it by running `grip setup` again.
+If you forget your passphrase, there is no "forgot password" flow. You reset it by running `/opt/grip/grip setup` again.
 
 **What a strong passphrase looks like:**
 
@@ -88,13 +90,13 @@ Each event records:
 Because the event store is append-only, these records cannot be deleted or modified through the normal application. They will survive a projection rebuild. If you suspect someone has been trying to access your GRIP, run:
 
 ```bash
-bun run src/cli/index.ts status
+/opt/grip/grip status
 ```
 
 This shows the last 20 events, including auth attempts. For a full audit, query the database directly:
 
 ```bash
-sqlite3 data/grip.db "SELECT id, payload FROM events WHERE json_extract(payload, '$.type') = 'AuthAttempt' ORDER BY id DESC LIMIT 50;"
+sqlite3 /opt/grip/data/grip.sqlite "SELECT id, payload FROM events WHERE json_extract(payload, '$.type') = 'AuthAttempt' ORDER BY id DESC LIMIT 50;"
 ```
 
 ---
@@ -217,4 +219,4 @@ Beyond what the service file already does, consider:
    dpkg-reconfigure --priority=low unattended-upgrades
    ```
 
-5. **Regular backups of `data/grip.db`**: this file is your entire history. Back it up off-site. A daily `rsync` or `rclone` to a remote location is sufficient. The SQLite file is safe to copy while GRIP is running in WAL mode.
+5. **Regular backups of `/opt/grip/data/grip.sqlite`**: this file is your entire history. Back it up off-site. A daily `rsync` or `rclone` to a remote location is sufficient. The SQLite file is safe to copy while GRIP is running in WAL mode.
