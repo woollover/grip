@@ -376,18 +376,18 @@ export function createAuthorApp(
 
   // ── ActivityPub author views ────────────────────────────────────────────────
   if (apCfg) {
-    app.get("/followers", ({ cookie }) => {
+    app.get("/followers", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-      return html(renderFollowersIndex(db));
+      const page = Math.max(1, parseInt(query.page as string) || 1);
+      return html(renderFollowersIndex(db, page));
     });
-  }
 
-  if (apCfg?.acceptReplies) {
-    app.get("/replies", ({ cookie }) => {
+    app.get("/replies", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-      return html(renderRepliesIndex(db));
+      const page = Math.max(1, parseInt(query.page as string) || 1);
+      return html(renderRepliesIndex(db, page));
     });
 
     app.post("/replies/:id/toggle", ({ params, cookie }) => {

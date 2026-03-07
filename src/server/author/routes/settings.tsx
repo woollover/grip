@@ -19,8 +19,50 @@ function getConfig(db: Database): { title: string; description: string; domain: 
   };
 }
 
+function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; followers: number } | null {
+  const enabled = (db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as { value: string } | null)?.value;
+  if (!enabled) return null;
+  const username = (db.prepare("SELECT value FROM config WHERE key = 'ap_username'").get() as { value: string } | null)?.value ?? '';
+  const domain = (db.prepare("SELECT value FROM config WHERE key = ?").get('domain') as { value: string } | null)?.value ?? '';
+  const { cnt } = db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number };
+  return { enabled: true, username, domain, followers: cnt };
+}
+
 export function renderSettings(db: Database): JSX.Element {
   const config = getConfig(db);
+  const ap = getApStatus(db);
+
+  const apSection = ap ? (
+    <section>
+      <div class="page-hd" style="margin-bottom:0.5rem">
+        <h3 style="display:flex;align-items:center;gap:0.5rem">
+          ActivityPub
+          <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--pico-primary);border:1px solid var(--pico-primary);border-radius:3px;padding:0.1rem 0.4rem">Active</span>
+        </h3>
+        <a href="/followers" role="button" class="outline secondary">Followers →</a>
+      </div>
+      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.4rem">
+        Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.followers} follower{ap.followers !== 1 ? 's' : ''}
+      </p>
+      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">
+        Managed via <code>grip.toml</code> — restart required to change settings.
+      </p>
+    </section>
+  ) : (
+    <section>
+      <div class="page-hd" style="margin-bottom:0.5rem">
+        <h3>ActivityPub</h3>
+      </div>
+      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.75rem">
+        Federate with Mastodon and the wider Fediverse. People can follow your notes from any ActivityPub server.
+      </p>
+      <p style="font-size:0.78rem;margin:0 0 0.4rem">To enable, add to <code>grip.toml</code> and restart:</p>
+      <pre style="font-size:0.75rem;margin:0;padding:0.65rem 0.85rem;border-radius:4px;background:var(--pico-code-background)">{`[activitypub]
+enabled        = true
+username       = "you"
+accept_replies = true`}</pre>
+    </section>
+  );
 
   const content = (
     <div style="max-width:480px">
@@ -42,7 +84,7 @@ export function renderSettings(db: Database): JSX.Element {
               placeholder="A short description of your site" />
           </label>
           <label>
-            Domain <small style="font-weight:normal;opacity:0.7"> — used in RSS URLs</small>
+            Domain <small style="font-weight:normal;opacity:0.7"> — used in RSS and ActivityPub URLs</small>
             <input type="text" name="domain" value={config.domain} placeholder="example.com" />
           </label>
         </form>
@@ -57,6 +99,10 @@ export function renderSettings(db: Database): JSX.Element {
         </div>
         <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
       </section>
+
+      <hr />
+
+      {apSection}
     </div>
   );
 
