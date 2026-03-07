@@ -72,16 +72,13 @@ Enter your password when prompted. You won't see anything as you type — that's
 Once logged in, paste this single command and press Enter:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh) https://github.com/woollover/grip
+bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh)
 ```
-
-> Replace `YOURUSERNAME` with your actual GitHub username if you've forked the repo.
 
 The installer will:
 
 - Create a dedicated `grip` user
-- Download GRIP to `/opt/grip`
-- Install all dependencies
+- Download the latest GRIP release to `/opt/grip`
 - Set up the background service
 
 This takes about 2–3 minutes. You'll see a stream of text — that's normal.
@@ -93,7 +90,7 @@ This takes about 2–3 minutes. You'll see a stream of text — that's normal.
 When the installer finishes, run:
 
 ```bash
-su - grip -c 'cd /opt/grip && bun run src/cli/index.ts setup'
+su - grip -c '/opt/grip/grip setup'
 ```
 
 The wizard will ask you a few questions:
@@ -106,7 +103,7 @@ The wizard will ask you a few questions:
 
 **Ports** — just press Enter twice to keep the defaults (3000 and 4000)
 
-**Passphrase** — choose a strong passphrase. USe 4 distinct words. This is the only password protecting your writing panel. Write it down somewhere safe.
+**Passphrase** — choose a strong passphrase. Use 4 distinct words. This is the only password protecting your writing panel. Write it down somewhere safe.
 
 **ActivityPub** — press Enter to skip for now. You can enable this later to connect with Mastodon.
 
@@ -196,12 +193,10 @@ Your public site is at `https://myname.com`.
 
 ## Keeping GRIP updated
 
-When a new version is available:
+When a new version is available, re-run the installer — it replaces the binary and static files without touching your data:
 
 ```bash
-cd /opt/grip
-git pull
-bun install
+bash <(curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh)
 systemctl restart grip
 ```
 
@@ -218,12 +213,12 @@ systemctl restart grip
 **Login not working?**
 
 - The passphrase is case-sensitive
-- To reset it, run the setup wizard again: `su - grip -c 'cd /opt/grip && bun run src/cli/index.ts setup'`
+- To reset it, run the setup wizard again: `su - grip -c '/opt/grip/grip setup'`
 
 **Something broke after an update?**
 
 ```bash
-su - grip -c 'cd /opt/grip && bun run src/cli/index.ts rebuild'
+su - grip -c '/opt/grip/grip rebuild'
 systemctl restart grip
 ```
 

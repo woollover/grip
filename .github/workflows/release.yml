@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build linux-x64
+        run: bun build --compile --target=bun-linux-x64 src/cli/index.ts --outfile dist/linux-x64/grip
+
+      - name: Build linux-arm64
+        run: bun build --compile --target=bun-linux-arm64 src/cli/index.ts --outfile dist/linux-arm64/grip
+
+      - name: Package linux-x64
+        run: |
+          cp -r public dist/linux-x64/
+          cp grip.toml.example grip.service Caddyfile.example dist/linux-x64/
+          tar -czf grip-linux-x64.tar.gz -C dist/linux-x64 .
+
+      - name: Package linux-arm64
+        run: |
+          cp -r public dist/linux-arm64/
+          cp grip.toml.example grip.service Caddyfile.example dist/linux-arm64/
+          tar -czf grip-linux-arm64.tar.gz -C dist/linux-arm64 .
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            grip-linux-x64.tar.gz \
+            grip-linux-arm64.tar.gz \
+            --title "GRIP ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

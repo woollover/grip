@@ -28,6 +28,7 @@ import {
   renderMicroIndex,
   handleMicroCreate,
   handleMicroRetract,
+  handleMicroRestore,
 } from "./routes/micro";
 import {
   renderPagesIndex,
@@ -49,9 +50,12 @@ import {
   handleSiteConfigUpdate,
   handleThemeChange,
 } from "./routes/settings";
-import { renderRepliesIndex, handleReplyToggle, renderFollowersIndex } from "./routes/replies";
+import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
+import { version as currentVersion } from "../../../package.json";
+import { execSync } from "child_process";
+import path from "path";
 
 const SESSION_COOKIE = "grip_session";
 const cv = (cookie: Record<string, { value?: string } | undefined>) =>
@@ -268,6 +272,13 @@ export function createAuthorApp(
     return new Response(null, { status: 302, headers: { Location: "/micro" } });
   });
 
+  app.post("/micro/:id/restore", ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    handleMicroRestore(db, store, params.id);
+    return new Response(null, { status: 302, headers: { Location: "/micro" } });
+  });
+
   // ── Pages ─────────────────────────────────────────────────────────────────────
   app.get("/pages", ({ cookie }) => {
     return (
@@ -378,11 +389,11 @@ export function createAuthorApp(
 
   // ── ActivityPub author views ────────────────────────────────────────────────
   if (apCfg) {
-    app.get("/followers", ({ cookie, query }) => {
+    app.get("/contacts", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
       const page = Math.max(1, parseInt(query.page as string) || 1);
-      return html(renderFollowersIndex(db, page));
+      return html(renderContactsIndex(db, page));
     });
 
     app.get("/replies", ({ cookie, query }) => {
@@ -400,6 +411,114 @@ export function createAuthorApp(
     });
   }
 
+  // ── Self-update ───────────────────────────────────────────────────────────────
+  app.post("/update", async ({ cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+
+    const binaryName = path.basename(process.execPath);
+    if (binaryName !== "grip") {
+      return new Response(
+        errorPage("Self-update is only available when running as a compiled binary, not in dev mode."),
+        { headers: { "Content-Type": "text/html; charset=utf-8" } },
+      );
+    }
+    const installDir = path.dirname(process.execPath);
+    const arch = process.arch === "arm64" ? "arm64" : "x64";
+    const asset = `grip-linux-${arch}.tar.gz`;
+
+    try {
+      // Resolve download URL
+      const apiRes = await fetch(
+        "https://api.github.com/repos/woollover/grip/releases/latest",
+        {
+          headers: { "User-Agent": "grip-self-update" },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+      if (!apiRes.ok) throw new Error(`GitHub API: ${apiRes.status}`);
+      const release = (await apiRes.json()) as {
+        assets: { name: string; browser_download_url: string }[];
+      };
+      const assetInfo = release.assets.find((a) => a.name === asset);
+      if (!assetInfo) throw new Error(`No release asset found for ${asset}`);
+
+      // Download
+      const dlRes = await fetch(assetInfo.browser_download_url, {
+        signal: AbortSignal.timeout(120_000),
+      });
+      if (!dlRes.ok) throw new Error(`Download failed: ${dlRes.status}`);
+
+      const tmpTar = "/tmp/grip-update.tar.gz";
+      const tmpDir = "/tmp/grip-update";
+      await Bun.write(tmpTar, dlRes);
+
+      // Extract and atomically replace binary + static files
+      execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir}`);
+      execSync(`tar -xzf ${tmpTar} -C ${tmpDir}`);
+      execSync(`chmod +x ${tmpDir}/grip`);
+      execSync(`mv ${tmpDir}/grip ${installDir}/grip`);
+      execSync(`cp -r ${tmpDir}/public ${installDir}/`);
+      execSync(`rm -rf ${tmpDir} ${tmpTar}`);
+
+      // Restart after the response is sent
+      setTimeout(() => {
+        try { execSync("sudo systemctl restart grip"); } catch { /* already restarting */ }
+      }, 1500);
+
+      return new Response(updatingPage(), {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Frame-Options": "DENY",
+        },
+      });
+    } catch (err) {
+      return new Response(errorPage(String(err)), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+  });
+
+  // ── Update check ─────────────────────────────────────────────────────────────
+  app.get("/update-check", async ({ cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/woollover/grip/releases/latest",
+        {
+          headers: { "User-Agent": "grip-update-check" },
+          signal: AbortSignal.timeout(5000),
+        },
+      );
+      if (!res.ok) throw new Error(`GitHub API responded ${res.status}`);
+      const data = (await res.json()) as { tag_name: string; html_url: string };
+      const latest = data.tag_name.replace(/^v/, "");
+
+      if (latest === currentVersion) {
+        return html(<span>v{currentVersion} — up to date ✓</span>);
+      }
+      return html(
+        <span style="color:var(--pico-primary)">
+          Update available: <strong safe>v{latest}</strong>
+          {" "}
+          <form method="POST" action="/update" style="display:inline;margin-left:0.25rem">
+            <button type="submit" style="padding:0.15rem 0.6rem;font-size:0.75rem;display:inline">
+              Update now
+            </button>
+          </form>
+          {" "}
+          <a href={data.html_url} target="_blank" rel="noopener noreferrer" style="font-size:0.75rem">
+            changelog →
+          </a>
+        </span>,
+      );
+    } catch {
+      return html(<span>Could not reach GitHub. Check your connection.</span>);
+    }
+  });
+
   return app;
 }
 
@@ -413,4 +532,60 @@ function html(content: JSX.Element): Response {
       "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
     },
   });
+}
+
+function updatingPage(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Updating GRIP…</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;
+         min-height:100vh;margin:0;background:#13171f;color:#c0c8d0}
+    .box{text-align:center;padding:2rem}
+    p{opacity:.65;font-size:.9rem;margin-top:.5rem}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Updating GRIP…</h2>
+    <p>The server is restarting. You will be redirected to login automatically.</p>
+  </div>
+  <script>
+    (function poll() {
+      fetch('/login', { method: 'HEAD' })
+        .then(function(r) { if (r.ok) location.href = '/login'; else setTimeout(poll, 2000); })
+        .catch(function() { setTimeout(poll, 2000); });
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+function errorPage(message: string): string {
+  const safe = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Update failed</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;
+         min-height:100vh;margin:0;background:#13171f;color:#c0c8d0}
+    .box{text-align:center;padding:2rem;max-width:480px}
+    pre{text-align:left;background:#1c2030;padding:1rem;border-radius:6px;font-size:.8rem;overflow-x:auto}
+    a{color:#58a6ff}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Update failed</h2>
+    <pre>${safe}</pre>
+    <p><a href="/settings">← Back to settings</a></p>
+  </div>
+</body>
+</html>`;
 }

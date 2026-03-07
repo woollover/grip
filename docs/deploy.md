@@ -14,7 +14,7 @@ This guide walks you through deploying GRIP on a Linux VPS from scratch. No prio
 
 4. **Two DNS A records** pointing at your VPS's IP address:
    - `example.com` → your VPS IP
-   - `author.example.com` → your VPS IP *(this is your private writing interface)*
+   - `author.example.com` → your VPS IP _(this is your private writing interface)_
 
    DNS changes can take a few minutes to a few hours to propagate. You can continue while you wait.
 
@@ -47,8 +47,8 @@ Let it finish before continuing.
 GRIP ships with a single script that handles everything: creating a dedicated user, installing Bun, cloning the repo, installing dependencies, copying your config template, and registering the systemd service.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/grip/main/install.sh \
-  | bash -s https://github.com/yourusername/grip
+curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh \
+  | bash -s https://github.com/woollover/grip
 ```
 
 Or, if you have already cloned the repo onto the server:
@@ -60,6 +60,7 @@ bash /opt/grip/install.sh https://github.com/yourusername/grip
 The script will talk you through each step with colour output. It is safe to re-run — it skips anything already done.
 
 **What the installer does:**
+
 - Installs `git`, `curl`, and `unzip` via apt
 - Creates a dedicated `grip` system user
 - Clones your GRIP repo to `/opt/grip` (or updates it if already present)

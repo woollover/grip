@@ -11,13 +11,13 @@ Federation is **opt-in and disabled by default.** GRIP works fully without it. T
 When enabled, your micro-posts become followable from the fediverse. Someone on Mastodon can search for `@you@yourdomain.com`, hit Follow, and your new notes will appear in their timeline — signed by your server, attributed to you, with no third-party intermediary.
 
 **What GRIP does:**
-- Publishes each new micro-post to all follower inboxes automatically
+- Publishes each new micro-post to all contact inboxes automatically
 - Accepts Follow and Unfollow requests
 - Optionally collects fediverse replies as comments (disabled by default)
 
 **What GRIP does not do:**
 - Accept or display replies unless you explicitly turn that on
-- Show follower counts anywhere in your own interface
+- Show contact counts anywhere in your own interface
 - Participate in likes, boosts, or other engagement mechanics
 - Require the fediverse to function — disable ActivityPub and GRIP works exactly as before
 
@@ -126,7 +126,7 @@ These are added to the public server (port 3000) when ActivityPub is enabled:
 | `GET /.well-known/webfinger` | Account discovery — how Mastodon finds you |
 | `GET /activitypub/actor` | Your identity card (JSON-LD Person object) |
 | `GET /activitypub/outbox` | Your last 20 micro-posts as ActivityStreams |
-| `GET /activitypub/followers` | Follower count (no URIs exposed) |
+| `GET /activitypub/followers` | Contact count (no URIs exposed) |
 | `GET /activitypub/notes/:id` | Individual micro-post as ActivityStreams Note |
 | `POST /activitypub/inbox` | Receives Follow, Unfollow, and replies from the fediverse |
 
@@ -136,9 +136,9 @@ All GET endpoints serve HTML to browsers (redirecting to `/micro`) and ActivityS
 
 ## Known Limitations (v1)
 
-**Authorized fetch:** Some Mastodon instances run in "secure mode," which requires HTTP Signatures even on GET requests. GRIP v1 does not sign GET requests. Content may not be visible to followers on those instances. This is a known gap — it will be addressed in a future update.
+**Authorized fetch:** Some Mastodon instances run in "secure mode," which requires HTTP Signatures even on GET requests. GRIP v1 does not sign GET requests. Content may not be visible to contacts on those instances. This is a known gap — it will be addressed in a future update.
 
-**No retry on delivery failure:** If a follower's server is unreachable when you post, that post will not be delivered to them. GRIP does not queue or retry. For a personal site with a handful of followers this is acceptable; large-scale use is not what GRIP is designed for.
+**No retry on delivery failure:** If a contact's server is unreachable when you post, that post will not be delivered to them. GRIP does not queue or retry. For a personal site with a handful of contacts this is acceptable; large-scale use is not what GRIP is designed for.
 
 **Domain change = identity reset:** ActivityPub identity is tied to the actor URL. Changing domains means a new fediverse identity. Plan your domain before going live.
 
@@ -154,4 +154,4 @@ Comment out or remove the `[activitypub]` section from `grip.toml` and restart:
 # username = "me"
 ```
 
-GRIP will start normally with no ActivityPub routes registered. Your follower list and key pair remain in the database — re-enable at any time to resume federation.
+GRIP will start normally with no ActivityPub routes registered. Your contact list and key pair remain in the database — re-enable at any time to resume federation.

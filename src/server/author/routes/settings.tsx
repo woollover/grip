@@ -6,6 +6,7 @@ import {
   type ThemeName, type ThemeCustom,
   PRESET_DEFAULTS, readThemeCustom,
 } from '../../../core/themes';
+import { version as currentVersion } from '../../../../package.json';
 
 function getConfig(db: Database): { title: string; description: string; domain: string } {
   const get = (key: string, fallback: string) => {
@@ -19,13 +20,13 @@ function getConfig(db: Database): { title: string; description: string; domain: 
   };
 }
 
-function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; followers: number } | null {
+function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; contacts: number } | null {
   const enabled = (db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as { value: string } | null)?.value;
   if (!enabled) return null;
   const username = (db.prepare("SELECT value FROM config WHERE key = 'ap_username'").get() as { value: string } | null)?.value ?? '';
   const domain = (db.prepare("SELECT value FROM config WHERE key = ?").get('domain') as { value: string } | null)?.value ?? '';
   const { cnt } = db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number };
-  return { enabled: true, username, domain, followers: cnt };
+  return { enabled: true, username, domain, contacts: cnt };
 }
 
 export function renderSettings(db: Database): JSX.Element {
@@ -39,10 +40,10 @@ export function renderSettings(db: Database): JSX.Element {
           ActivityPub
           <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--pico-primary);border:1px solid var(--pico-primary);border-radius:3px;padding:0.1rem 0.4rem">Active</span>
         </h3>
-        <a href="/followers" role="button" class="outline secondary">Followers →</a>
+        <a href="/contacts" role="button" class="outline secondary">Contacts →</a>
       </div>
       <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.4rem">
-        Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.followers} follower{ap.followers !== 1 ? 's' : ''}
+        Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.contacts} contact{ap.contacts !== 1 ? 's' : ''}
       </p>
       <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">
         Managed via <code>grip.toml</code> — restart required to change settings.
@@ -65,44 +66,70 @@ accept_replies = true`}</pre>
   );
 
   const content = (
-    <div style="max-width:480px">
+    <div>
       <h2 style="margin-bottom:1.5rem">Settings</h2>
 
-      <section>
-        <form method="POST" action="/settings/site">
-          <div class="page-hd" style="margin-bottom:1rem">
-            <h3>Site identity</h3>
-            <button type="submit" class="outline">Save</button>
-          </div>
-          <label>
-            Site title
-            <input type="text" name="title" value={config.title} required />
-          </label>
-          <label>
-            Description
-            <input type="text" name="description" value={config.description}
-              placeholder="A short description of your site" />
-          </label>
-          <label>
-            Domain <small style="font-weight:normal;opacity:0.7"> — used in RSS and ActivityPub URLs</small>
-            <input type="text" name="domain" value={config.domain} placeholder="example.com" />
-          </label>
-        </form>
-      </section>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:start">
 
-      <hr />
+        {/* Left — Site identity */}
+        <section>
+          <form method="POST" action="/settings/site">
+            <div class="page-hd" style="margin-bottom:1rem">
+              <h3>Site identity</h3>
+              <button type="submit" class="outline">Save</button>
+            </div>
+            <label>
+              Site title
+              <input type="text" name="title" value={config.title} required />
+            </label>
+            <label>
+              Description
+              <input type="text" name="description" value={config.description}
+                placeholder="A short description of your site" />
+            </label>
+            <label>
+              Domain <small style="font-weight:normal;opacity:0.7"> — used in RSS and ActivityPub URLs</small>
+              <input type="text" name="domain" value={config.domain} placeholder="example.com" />
+            </label>
+          </form>
+        </section>
 
-      <section>
-        <div class="page-hd">
-          <h3>Theme</h3>
-          <a href="/settings/theme" role="button" class="outline secondary">Customize →</a>
+        {/* Right — Theme, ActivityPub, Updates */}
+        <div style="display:flex;flex-direction:column;gap:1.5rem">
+
+          <section>
+            <div class="page-hd">
+              <h3>Theme</h3>
+              <a href="/settings/theme" role="button" class="outline secondary">Customize →</a>
+            </div>
+            <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
+          </section>
+
+          <hr style="margin:0" />
+
+          {apSection}
+
+          <hr style="margin:0" />
+
+          <section>
+            <div class="page-hd" style="margin-bottom:0.5rem">
+              <h3>Updates</h3>
+              <button
+                class="outline secondary"
+                hx-get="/update-check"
+                hx-target="#update-result"
+                hx-swap="innerHTML"
+                hx-indicator="#update-result"
+              >Check</button>
+            </div>
+            <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.5rem">
+              Current version: <code safe>v{currentVersion}</code>
+            </p>
+            <p id="update-result" style="font-size:0.78rem;margin:0;color:var(--pico-muted-color)"></p>
+          </section>
+
         </div>
-        <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
-      </section>
-
-      <hr />
-
-      {apSection}
+      </div>
     </div>
   );
 
