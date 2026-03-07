@@ -54,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/woollover/grip/main/install.sh \
 Or, if you have already cloned the repo onto the server:
 
 ```bash
-bash /opt/grip/install.sh https://github.com/yourusername/grip
+bash /opt/grip/install.sh https://github.com/woollover/grip
 ```
 
 The script will talk you through each step with colour output. It is safe to re-run — it skips anything already done.

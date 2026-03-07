@@ -1,6 +1,6 @@
 [Unit]
 Description=GRIP personal publishing server
-Documentation=https://github.com/your-username/grip
+Documentation=https://github.com/woollover/grip
 After=network.target
 
 [Service]
