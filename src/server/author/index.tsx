@@ -13,6 +13,7 @@ import {
   verifySession,
   verifyPassphrase,
 } from "./auth";
+import { renderLoginPage } from "./routes/login";
 import { renderDashboard } from "./routes/dashboard";
 import {
   renderArticlesIndex,
@@ -23,7 +24,11 @@ import {
   handleArticlePublish,
   handleArticleUnpublish,
 } from "./routes/articles";
-import { renderMicroIndex, handleMicroCreate } from "./routes/micro";
+import {
+  renderMicroIndex,
+  handleMicroCreate,
+  handleMicroRetract,
+} from "./routes/micro";
 import {
   renderPagesIndex,
   renderPageNew,
@@ -44,15 +49,16 @@ import {
   handleSiteConfigUpdate,
   handleThemeChange,
 } from "./routes/settings";
-import { authorLayout } from "./routes/layout";
+import { renderRepliesIndex, handleReplyToggle, renderFollowersIndex } from "./routes/replies";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
 
 const SESSION_COOKIE = "grip_session";
+const cv = (cookie: Record<string, { value?: string } | undefined>) =>
+  cookie[SESSION_COOKIE]?.value as string | undefined;
 
 export function createAuthorApp(
   db: Database,
-  _port: number,
   apCfg?: ApConfig | null,
 ): Elysia {
   const store = new EventStore(db);
@@ -83,12 +89,12 @@ export function createAuthorApp(
 
   // ── Login ────────────────────────────────────────────────────────────────────
   app.get("/login", ({ cookie }) => {
-    if (verifySession(db, cookie[SESSION_COOKIE]?.value as string | undefined)) {
+    if (
+      verifySession(db, cv(cookie))
+    ) {
       return Response.redirect("/dashboard", 302);
     }
-    return new Response(renderLoginPage(false, false), {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+    return html(renderLoginPage(false, false));
   });
 
   app.post("/login", async ({ body, request }) => {
@@ -139,7 +145,7 @@ export function createAuthorApp(
   // ── Dashboard ────────────────────────────────────────────────────────────────
   app.get("/dashboard", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderDashboard(db))
+      requireAuth(cv(cookie)) ?? html(renderDashboard(db))
     );
   });
 
@@ -153,19 +159,19 @@ export function createAuthorApp(
   // ── Articles ─────────────────────────────────────────────────────────────────
   app.get("/articles", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ??
+      requireAuth(cv(cookie)) ??
       html(renderArticlesIndex(db))
     );
   });
 
   app.get("/articles/new", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderArticleNew())
+      requireAuth(cv(cookie)) ?? html(renderArticleNew())
     );
   });
 
   app.post("/articles", ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     const id = handleArticleCreate(db, store, body as any);
     return new Response(null, {
@@ -176,13 +182,13 @@ export function createAuthorApp(
 
   app.get("/articles/:id/edit", ({ params, cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ??
+      requireAuth(cv(cookie)) ??
       html(renderArticleEdit(db, params.id))
     );
   });
 
   app.post("/articles/:id/revise", ({ params, body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleArticleRevise(db, store, params.id, body as any);
     return new Response(null, {
@@ -192,7 +198,7 @@ export function createAuthorApp(
   });
 
   app.post("/articles/:id/publish", ({ params, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleArticlePublish(db, store, params.id);
     return new Response(null, {
@@ -202,7 +208,7 @@ export function createAuthorApp(
   });
 
   app.post("/articles/:id/unpublish", ({ params, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleArticleUnpublish(db, store, params.id);
     return new Response(null, {
@@ -222,12 +228,12 @@ export function createAuthorApp(
   // ── Micro-posts ───────────────────────────────────────────────────────────────
   app.get("/micro", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderMicroIndex(db))
+      requireAuth(cv(cookie)) ?? html(renderMicroIndex(db))
     );
   });
 
   app.post("/micro", ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleMicroCreate(db, store, body as any);
 
@@ -253,19 +259,26 @@ export function createAuthorApp(
     return new Response(null, { status: 302, headers: { Location: "/micro" } });
   });
 
+  app.post("/micro/:id/retract", ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    handleMicroRetract(db, store, params.id);
+    return new Response(null, { status: 302, headers: { Location: "/micro" } });
+  });
+
   // ── Pages ─────────────────────────────────────────────────────────────────────
   app.get("/pages", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderPagesIndex(db))
+      requireAuth(cv(cookie)) ?? html(renderPagesIndex(db))
     );
   });
 
   app.get("/pages/new", ({ cookie }) => {
-    return requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderPageNew());
+    return requireAuth(cv(cookie)) ?? html(renderPageNew(db));
   });
 
   app.post("/pages", ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     const id = handlePageCreate(db, store, body as any);
     return new Response(null, {
@@ -276,13 +289,13 @@ export function createAuthorApp(
 
   app.get("/pages/:id/edit", ({ params, cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ??
+      requireAuth(cv(cookie)) ??
       html(renderPageEdit(db, params.id))
     );
   });
 
   app.post("/pages/:id/revise", ({ params, body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handlePageRevise(db, store, params.id, body as any);
     return new Response(null, {
@@ -292,7 +305,7 @@ export function createAuthorApp(
   });
 
   app.post("/pages/:id/publish", ({ params, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handlePagePublish(db, store, params.id);
     return new Response(null, { status: 302, headers: { Location: "/pages" } });
@@ -301,12 +314,12 @@ export function createAuthorApp(
   // ── Media ─────────────────────────────────────────────────────────────────────
   app.get("/media", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderMediaIndex(db))
+      requireAuth(cv(cookie)) ?? html(renderMediaIndex(db))
     );
   });
 
   app.post("/media/upload", async ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     const result = await handleMediaUploadJson(db, store, body as any);
     return new Response(JSON.stringify(result), {
@@ -321,7 +334,7 @@ export function createAuthorApp(
   });
 
   app.post("/media", async ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     await handleMediaUpload(db, store, body as any);
     return new Response(null, { status: 302, headers: { Location: "/media" } });
@@ -330,19 +343,19 @@ export function createAuthorApp(
   // ── Settings ──────────────────────────────────────────────────────────────────
   app.get("/settings", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ?? html(renderSettings(db))
+      requireAuth(cv(cookie)) ?? html(renderSettings(db))
     );
   });
 
   app.get("/settings/theme", ({ cookie }) => {
     return (
-      requireAuth(cookie[SESSION_COOKIE]?.value) ??
+      requireAuth(cv(cookie)) ??
       html(renderThemeSettings(db))
     );
   });
 
   app.post("/settings/site", ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleSiteConfigUpdate(db, store, body as any);
     return new Response(null, {
@@ -352,7 +365,7 @@ export function createAuthorApp(
   });
 
   app.post("/settings/theme", ({ body, cookie }) => {
-    const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+    const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     handleThemeChange(db, store, body as any);
     return new Response(null, {
@@ -361,113 +374,35 @@ export function createAuthorApp(
     });
   });
 
-  // ── Replies (ActivityPub) ───────────────────────────────────────────────────
+  // ── ActivityPub author views ────────────────────────────────────────────────
+  if (apCfg) {
+    app.get("/followers", ({ cookie }) => {
+      const guard = requireAuth(cv(cookie));
+      if (guard) return guard;
+      return html(renderFollowersIndex(db));
+    });
+  }
+
   if (apCfg?.acceptReplies) {
     app.get("/replies", ({ cookie }) => {
-      const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+      const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-
-      const replies = db
-        .prepare(
-          "SELECT id, note_id, actor_uri, actor_name, content, published_at, status FROM ap_replies ORDER BY published_at DESC",
-        )
-        .all() as {
-        id: string;
-        note_id: string;
-        actor_uri: string;
-        actor_name: string;
-        content: string;
-        published_at: number;
-        status: string;
-      }[];
-
-      const rows = replies
-        .map((r) => {
-          const truncated =
-            r.content.length > 100
-              ? r.content.slice(0, 100) + "..."
-              : r.content;
-          const action =
-            r.status === "visible"
-              ? `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline secondary" style="padding:0.2rem 0.6rem">Hide</button></form>`
-              : `<form method="POST" action="/replies/${encodeURIComponent(r.id)}/toggle" style="margin:0"><button class="outline" style="padding:0.2rem 0.6rem">Show</button></form>`;
-          return `<tr>
-          <td><code>${r.note_id.slice(0, 8)}</code></td>
-          <td><a href="${r.actor_uri}" rel="noopener noreferrer" target="_blank">${r.actor_name}</a></td>
-          <td>${truncated}</td>
-          <td><small>${new Date(r.published_at).toISOString()}</small></td>
-          <td>${r.status}</td>
-          <td>${action}</td>
-        </tr>`;
-        })
-        .join("");
-
-      const content = `
-        <h2>Replies</h2>
-        ${
-          replies.length === 0
-            ? "<p>No replies yet.</p>"
-            : `
-        <table>
-          <thead><tr><th>Post</th><th>Author</th><th>Content</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`
-        }
-      `;
-      return html(authorLayout("Replies", content, db));
+      return html(renderRepliesIndex(db));
     });
 
     app.post("/replies/:id/toggle", ({ params, cookie }) => {
-      const guard = requireAuth(cookie[SESSION_COOKIE]?.value);
+      const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-
-      const row = db
-        .prepare("SELECT status FROM ap_replies WHERE id = ?")
-        .get(params.id) as { status: string } | null;
-      if (row) {
-        const newStatus = row.status === "visible" ? "hidden" : "visible";
-        db.prepare("UPDATE ap_replies SET status = ? WHERE id = ?").run(
-          newStatus,
-          params.id,
-        );
-      }
-      return new Response(null, {
-        status: 302,
-        headers: { Location: "/replies" },
-      });
+      handleReplyToggle(db, params.id);
+      return new Response(null, { status: 302, headers: { Location: "/replies" } });
     });
   }
 
   return app;
 }
 
-function html(content: string): Response {
+function html(content: JSX.Element): Response {
   return new Response(content, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
-}
-
-function renderLoginPage(badPassword: boolean, lockedOut: boolean): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GRIP — Login</title>
-  <link rel="stylesheet" href="/static/pico.min.css">
-  <link rel="stylesheet" href="/theme.css">
-</head>
-<body>
-  <main class="container" style="max-width:400px;margin-top:4rem">
-    <h1>GRIP</h1>
-    ${lockedOut ? '<p role="alert" style="color:var(--pico-color-red-500)">Too many failed attempts. Try again in 15 minutes.</p>' : ""}
-    ${badPassword ? '<p role="alert" style="color:var(--pico-color-red-500)">Incorrect passphrase.</p>' : ""}
-    <form method="POST" action="/login">
-      <label for="passphrase">Passphrase</label>
-      <input type="password" id="passphrase" name="passphrase" autofocus required>
-      <button type="submit">Enter</button>
-    </form>
-  </main>
-</body>
-</html>`;
 }

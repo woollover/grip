@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
-import { applyEvent } from '../../../core/projections';
+import { commitEvent } from '../../../core/projections';
 import { authorLayout } from './layout';
 import {
   type ThemeName, type ThemeCustom,
@@ -19,58 +19,71 @@ function getConfig(db: Database): { title: string; description: string; domain: 
   };
 }
 
-export function renderSettings(db: Database): string {
+export function renderSettings(db: Database): JSX.Element {
   const config = getConfig(db);
 
-  const content = `
-    <h2>Settings</h2>
+  const content = (
+    <div style="max-width:480px">
+      <h2 style="margin-bottom:1.5rem">Settings</h2>
 
-    <section>
-      <h3>Site identity</h3>
-      <form method="POST" action="/settings/site">
-        <label>
-          Site title
-          <input type="text" name="title" value="${config.title}" required>
-        </label>
-        <label>
-          Description
-          <input type="text" name="description" value="${config.description}" placeholder="A short description of your site">
-        </label>
-        <label>
-          Domain <small style="font-weight:normal">(used in RSS feed URLs)</small>
-          <input type="text" name="domain" value="${config.domain}" placeholder="example.com">
-        </label>
-        <button type="submit">Save site settings</button>
-      </form>
-    </section>
+      <section>
+        <form method="POST" action="/settings/site">
+          <div class="page-hd" style="margin-bottom:1rem">
+            <h3>Site identity</h3>
+            <button type="submit" class="outline">Save</button>
+          </div>
+          <label>
+            Site title
+            <input type="text" name="title" value={config.title} required />
+          </label>
+          <label>
+            Description
+            <input type="text" name="description" value={config.description}
+              placeholder="A short description of your site" />
+          </label>
+          <label>
+            Domain <small style="font-weight:normal;opacity:0.7"> — used in RSS URLs</small>
+            <input type="text" name="domain" value={config.domain} placeholder="example.com" />
+          </label>
+        </form>
+      </section>
 
-    <section style="margin-top:2rem">
-      <h3>Theme</h3>
-      <p style="color:var(--pico-muted-color)">Customize fonts, colors, and visual style.</p>
-      <a href="/settings/theme" role="button" class="outline">Customize theme →</a>
-    </section>
-  `;
+      <hr />
+
+      <section>
+        <div class="page-hd">
+          <h3>Theme</h3>
+          <a href="/settings/theme" role="button" class="outline secondary">Customize →</a>
+        </div>
+        <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
+      </section>
+    </div>
+  );
 
   return authorLayout('Settings', content, db);
 }
 
 // ── Theme editor ──────────────────────────────────────────────────────────────
 
-function fontOptions(options: [value: string, label: string][], current: string): string {
-  return options
-    .map(([value, label]) =>
-      `<option value="${value}"${value === current ? ' selected' : ''}>${label}</option>`
-    )
-    .join('\n              ');
+function FontOptions({ options, current }: {
+  options: [value: string, label: string][];
+  current: string;
+}): JSX.Element {
+  return (
+    <>
+      {options.map(([value, label]) => (
+        <option value={value} selected={value === current}>{label}</option>
+      ))}
+    </>
+  );
 }
 
-export function renderThemeSettings(db: Database): string {
+export function renderThemeSettings(db: Database): JSX.Element {
   const themeRow = db.prepare('SELECT value FROM config WHERE key = ?').get('theme') as { value: string } | null;
   const currentTheme = (themeRow?.value ?? 'light') as ThemeName;
   const custom = readThemeCustom(db);
   const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.light;
 
-  // Effective value = stored custom override if present, else preset default
   const eff = {
     colorScheme: custom?.colorScheme ?? defaults.colorScheme,
     fontBody:    custom?.fontBody    ?? defaults.fontBody,
@@ -83,209 +96,188 @@ export function renderThemeSettings(db: Database): string {
   };
 
   const presetMeta: { name: ThemeName; label: string }[] = [
+    { name: 'coder',     label: 'Coder'     },
     { name: 'light',     label: 'Light'     },
     { name: 'dark',      label: 'Dark'      },
-    { name: 'cyberpunk', label: 'Cyberpunk' },
     { name: 'literary',  label: 'Literary'  },
     { name: 'ink',       label: 'Ink'       },
+    { name: 'cyberpunk', label: 'Cyberpunk' },
   ];
 
-  const content = `
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:2rem">
-      <a href="/settings" role="button" class="outline secondary"
-         style="padding:0.3rem 0.8rem;font-size:0.875rem">← Settings</a>
-      <h2 style="margin:0">Theme</h2>
-    </div>
+  const themeScript = `
+(function() {
+  const PRESETS = ${JSON.stringify(PRESET_DEFAULTS)};
 
-    <section style="margin-bottom:1.5rem">
-      <h4 style="margin-bottom:0.75rem">Presets</h4>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-        ${presetMeta.map(p => `
-          <button type="button"
-                  class="outline${currentTheme === p.name ? '' : ' secondary'}"
-                  style="padding:0.35rem 1rem"
-                  onclick="applyPreset('${p.name}')">
-            ${p.label}
-          </button>
-        `).join('')}
-      </div>
-    </section>
+  const VAR_MAP = {
+    fontBody:    '--pico-font-family',
+    fontMono:    '--pico-font-family-monospace',
+    colorAccent: '--pico-primary',
+    colorBg:     '--pico-background-color',
+    colorText:   '--pico-color',
+    colorMuted:  '--pico-muted-color',
+  };
 
-    <form id="theme-form" method="POST" action="/settings/theme">
-      <input type="hidden" name="theme" id="theme-hidden" value="${currentTheme}">
+  function applyLivePreview() {
+    const form = document.getElementById('theme-form');
+    const root = document.documentElement;
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start">
+    for (const [name, cssVar] of Object.entries(VAR_MAP)) {
+      const val = form.elements[name] && form.elements[name].value;
+      if (val) root.style.setProperty(cssVar, val);
+    }
 
-        <section>
-          <h4>Typography</h4>
+    const headingFont = form.elements['fontHeading'] && form.elements['fontHeading'].value;
+    let hs = document.getElementById('grip-heading-live');
+    if (!hs) {
+      hs = document.createElement('style');
+      hs.id = 'grip-heading-live';
+      document.head.appendChild(hs);
+    }
+    hs.textContent = headingFont
+      ? 'h1,h2,h3,h4,h5,h6 { font-family: ' + headingFont + ' !important; }'
+      : '';
 
-          <label>
-            Body font
-            <select name="fontBody">
-              ${fontOptions([
-                ["system-ui, sans-serif",                                          "System sans-serif"],
-                ["Georgia, 'Times New Roman', serif",                              "Georgia"],
-                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",           "Palatino"],
-                ["Optima, Candara, 'Noto Sans', sans-serif",                       "Optima / Candara"],
-                ["'Courier New', Courier, monospace",                              "Courier New"],
-              ], eff.fontBody)}
-            </select>
-          </label>
+    const scheme = form.querySelector('[name=colorScheme]:checked');
+    root.setAttribute('data-theme', scheme && scheme.value === 'dark' ? 'dark' : 'light');
+  }
 
-          <label>
-            Heading font
-            <small style="font-weight:normal;color:var(--pico-muted-color)"> — empty = same as body</small>
-            <select name="fontHeading">
-              ${fontOptions([
-                ["",                                                                "Same as body"],
-                ["system-ui, sans-serif",                                          "System sans-serif"],
-                ["Georgia, 'Times New Roman', serif",                              "Georgia"],
-                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",           "Palatino"],
-                ["Optima, Candara, 'Noto Sans', sans-serif",                       "Optima / Candara"],
-              ], eff.fontHeading)}
-            </select>
-          </label>
+  window.applyPreset = function(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    const form = document.getElementById('theme-form');
+    document.getElementById('theme-hidden').value = name;
+    form.elements['fontBody'].value    = p.fontBody;
+    form.elements['fontHeading'].value = p.fontHeading;
+    form.elements['fontMono'].value    = p.fontMono;
+    form.elements['colorAccent'].value = p.colorAccent;
+    form.elements['colorBg'].value     = p.colorBg;
+    form.elements['colorText'].value   = p.colorText;
+    form.elements['colorMuted'].value  = p.colorMuted;
+    const radio = form.querySelector('[name=colorScheme][value="' + p.colorScheme + '"]');
+    if (radio) radio.checked = true;
+    applyLivePreview();
+  };
 
-          <label>
-            Code font
-            <select name="fontMono">
-              ${fontOptions([
-                ["ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",    "System monospace"],
-                ["'Courier New', Courier, monospace",                              "Courier New"],
-                ["'Fira Code', 'Fira Mono', 'DejaVu Sans Mono', monospace",        "Fira Code"],
-              ], eff.fontMono)}
-            </select>
-          </label>
-        </section>
+  const form = document.getElementById('theme-form');
+  form.addEventListener('input', applyLivePreview);
+  form.addEventListener('change', applyLivePreview);
+  applyLivePreview();
+})();
+`;
 
-        <section>
-          <h4>Colours</h4>
+  const colorInput = (name: string, label: string, value: string) => (
+    <label style="margin-bottom:0">
+      <span style="font-size:0.72rem;opacity:0.7">{label}</span>
+      <input type="color" name={name} value={value}
+        style="width:100%;height:1.9rem;padding:0.1rem 0.2rem;cursor:pointer;border-radius:3px;margin-top:0.2rem" />
+    </label>
+  );
 
-          <label style="margin-bottom:1.25rem">
-            Mode
-            <div style="display:flex;gap:1.5rem;margin-top:0.4rem">
-              <label style="display:flex;align-items:center;gap:0.4rem;font-weight:normal;margin:0">
-                <input type="radio" name="colorScheme" value="light"
-                       ${eff.colorScheme === 'light' ? 'checked' : ''} style="margin:0">
-                Light
-              </label>
-              <label style="display:flex;align-items:center;gap:0.4rem;font-weight:normal;margin:0">
-                <input type="radio" name="colorScheme" value="dark"
-                       ${eff.colorScheme === 'dark' ? 'checked' : ''} style="margin:0">
-                Dark
-              </label>
-            </div>
-          </label>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
-            <label>
-              Accent
-              <input type="color" name="colorAccent" value="${eff.colorAccent}"
-                     style="width:100%;height:2.75rem;padding:0.2rem;cursor:pointer;border-radius:var(--pico-border-radius)">
-            </label>
-            <label>
-              Background
-              <input type="color" name="colorBg" value="${eff.colorBg}"
-                     style="width:100%;height:2.75rem;padding:0.2rem;cursor:pointer;border-radius:var(--pico-border-radius)">
-            </label>
-            <label>
-              Text
-              <input type="color" name="colorText" value="${eff.colorText}"
-                     style="width:100%;height:2.75rem;padding:0.2rem;cursor:pointer;border-radius:var(--pico-border-radius)">
-            </label>
-            <label>
-              Muted
-              <input type="color" name="colorMuted" value="${eff.colorMuted}"
-                     style="width:100%;height:2.75rem;padding:0.2rem;cursor:pointer;border-radius:var(--pico-border-radius)">
-            </label>
-          </div>
-        </section>
-
+  const content = (
+    <div style="max-width:860px;margin:0 auto">
+      <div class="page-hd" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <a href="/settings" class="outline secondary" role="button">← Back</a>
+          <h2 style="margin:0">Theme</h2>
+        </div>
+        <button type="submit" form="theme-form">Save theme</button>
       </div>
 
-      <section style="margin-top:2rem">
-        <h4>Preview</h4>
-        <div style="padding:2rem;border:1px solid var(--pico-border-color);border-radius:var(--pico-border-radius)">
-          <h1 style="margin-top:0">The quick brown fox</h1>
-          <h2>A secondary heading</h2>
-          <p>Body text with a <a href="#">hyperlink</a>, some <strong>bold</strong>
-          and <em>italic</em> words. The quick brown fox jumps over the lazy dog.</p>
-          <p><code>const grip = "sovereign";</code> — monospaced text</p>
-          <p><small style="color:var(--pico-muted-color)">A muted footnote or caption.</small></p>
-          <button type="button" style="margin:0">Primary button</button>
+      <section style="margin-bottom:1rem">
+        <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.5rem">Presets</p>
+        <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+          {presetMeta.map(p => (
+            <button type="button"
+              class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
+              style="padding:0.2rem 0.65rem;font-size:0.75rem"
+              onclick={`applyPreset('${p.name}')`}>
+              {p.label}
+            </button>
+          ))}
         </div>
       </section>
 
-      <div style="margin-top:1.5rem">
-        <button type="submit">Save theme</button>
-      </div>
+      <form id="theme-form" method="POST" action="/settings/theme">
+        <input type="hidden" name="theme" id="theme-hidden" value={currentTheme} />
 
-    </form>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:1.5rem;align-items:start">
 
-    <script>
-    (function() {
-      const PRESETS = ${JSON.stringify(PRESET_DEFAULTS)};
+          <section style="margin:0">
+            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.6rem">Typography</p>
+            <label style="margin-bottom:0.6rem">
+              Body
+              <select name="fontBody" style="margin-top:0.2rem">
+                <FontOptions options={[
+                  ['system-ui, sans-serif',                                        'System sans-serif'],
+                  ["Georgia, 'Times New Roman', serif",                            'Georgia'],
+                  ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
+                  ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
+                  ["'Courier New', Courier, monospace",                            'Courier New'],
+                ]} current={eff.fontBody} />
+              </select>
+            </label>
+            <label style="margin-bottom:0.6rem">
+              Headings
+              <select name="fontHeading" style="margin-top:0.2rem">
+                <FontOptions options={[
+                  ['',                                                              'Same as body'],
+                  ['system-ui, sans-serif',                                        'System sans-serif'],
+                  ["Georgia, 'Times New Roman', serif",                            'Georgia'],
+                  ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
+                  ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
+                ]} current={eff.fontHeading} />
+              </select>
+            </label>
+            <label style="margin-bottom:0">
+              Code
+              <select name="fontMono" style="margin-top:0.2rem">
+                <FontOptions options={[
+                  ["ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",  'System mono'],
+                  ["'Courier New', Courier, monospace",                            'Courier New'],
+                  ["'Fira Code', 'Fira Mono', 'DejaVu Sans Mono', monospace",      'Fira Code'],
+                ]} current={eff.fontMono} />
+              </select>
+            </label>
+          </section>
 
-      const VAR_MAP = {
-        fontBody:    '--pico-font-family',
-        fontMono:    '--pico-font-family-monospace',
-        colorAccent: '--pico-primary',
-        colorBg:     '--pico-background-color',
-        colorText:   '--pico-color',
-        colorMuted:  '--pico-muted-color',
-      };
+          <section style="margin:0">
+            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.6rem">Colours</p>
+            <div style="display:flex;gap:1rem;margin-bottom:0.75rem">
+              <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
+                <input type="radio" name="colorScheme" value="light"
+                  checked={eff.colorScheme === 'light'} style="margin:0" /> Light
+              </label>
+              <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
+                <input type="radio" name="colorScheme" value="dark"
+                  checked={eff.colorScheme === 'dark'} style="margin:0" /> Dark
+              </label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+              {colorInput('colorAccent', 'Accent', eff.colorAccent)}
+              {colorInput('colorBg', 'Background', eff.colorBg)}
+              {colorInput('colorText', 'Text', eff.colorText)}
+              {colorInput('colorMuted', 'Muted', eff.colorMuted)}
+            </div>
+          </section>
 
-      function applyLivePreview() {
-        const form = document.getElementById('theme-form');
-        const root = document.documentElement;
+          <section style="margin:0">
+            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.5rem">Preview</p>
+            <div style="padding:1rem 1.25rem;border:1px solid var(--pico-border-color);border-radius:4px;font-size:0.85rem;height:100%">
+              <p style="font-size:1.1rem;font-weight:700;margin-bottom:0.35rem">The quick brown fox</p>
+              <p style="margin-bottom:0.35rem">Body text with a <a href="#">hyperlink</a>, <strong>bold</strong> and <em>italic</em>.</p>
+              <p style="margin-bottom:0.35rem"><code>const grip = "sovereign";</code></p>
+              <p style="color:var(--pico-muted-color);font-size:0.8rem;margin-bottom:0.5rem">A muted caption.</p>
+              <button type="button" style="margin:0;padding:0.2rem 0.65rem;font-size:0.78rem">Button</button>
+            </div>
+          </section>
 
-        for (const [name, cssVar] of Object.entries(VAR_MAP)) {
-          const val = form.elements[name] && form.elements[name].value;
-          if (val) root.style.setProperty(cssVar, val);
-        }
+        </div>
 
-        // Heading font: inject a style element since it targets selectors, not :root
-        const headingFont = form.elements['fontHeading'] && form.elements['fontHeading'].value;
-        let hs = document.getElementById('grip-heading-live');
-        if (!hs) {
-          hs = document.createElement('style');
-          hs.id = 'grip-heading-live';
-          document.head.appendChild(hs);
-        }
-        hs.textContent = headingFont
-          ? 'h1,h2,h3,h4,h5,h6 { font-family: ' + headingFont + ' !important; }'
-          : '';
+      </form>
 
-        // Color scheme: toggle data-theme on <html>
-        const scheme = form.querySelector('[name=colorScheme]:checked');
-        if (scheme && scheme.value === 'dark') root.setAttribute('data-theme', 'dark');
-        else root.removeAttribute('data-theme');
-      }
-
-      window.applyPreset = function(name) {
-        const p = PRESETS[name];
-        if (!p) return;
-        const form = document.getElementById('theme-form');
-        document.getElementById('theme-hidden').value = name;
-        form.elements['fontBody'].value    = p.fontBody;
-        form.elements['fontHeading'].value = p.fontHeading;
-        form.elements['fontMono'].value    = p.fontMono;
-        form.elements['colorAccent'].value = p.colorAccent;
-        form.elements['colorBg'].value     = p.colorBg;
-        form.elements['colorText'].value   = p.colorText;
-        form.elements['colorMuted'].value  = p.colorMuted;
-        const radio = form.querySelector('[name=colorScheme][value="' + p.colorScheme + '"]');
-        if (radio) radio.checked = true;
-        applyLivePreview();
-      };
-
-      const form = document.getElementById('theme-form');
-      form.addEventListener('input', applyLivePreview);
-      form.addEventListener('change', applyLivePreview);
-      applyLivePreview();
-    })();
-    </script>
-  `;
+      <script>{themeScript}</script>
+    </div>
+  );
 
   return authorLayout('Theme', content, db);
 }
@@ -303,11 +295,9 @@ export function handleSiteConfigUpdate(
     description: body.description?.trim(),
     domain:      body.domain?.trim(),
   };
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  commitEvent(db, store, event);
 }
 
-// Theme is cosmetic preference — written directly to config, not the event store.
 export function handleThemeChange(
   db: Database,
   _store: EventStore,
@@ -318,7 +308,7 @@ export function handleThemeChange(
     colorAccent?: string; colorBg?: string; colorText?: string; colorMuted?: string;
   }
 ): void {
-  const validThemes: ThemeName[] = ['light', 'dark', 'cyberpunk', 'literary', 'ink'];
+  const validThemes: ThemeName[] = ['light', 'dark', 'coder', 'cyberpunk', 'literary', 'ink'];
   const theme = validThemes.includes(body.theme as ThemeName) ? (body.theme as ThemeName) : 'light';
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('theme', theme);
 

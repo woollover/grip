@@ -1,20 +1,20 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
+import { fmtDate } from '../../../views/shared';
 
 interface Article {
-  id: string; slug: string; title: string; body_html: string;
-  tags: string; published_at: number | null;
+  slug: string; title: string; published_at: number;
 }
 
 interface MicroPost {
   id: string; body_html: string; created_at: number;
 }
 
-export function renderHome(db: Database, siteTitle: string, siteDescription: string): string {
+export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
   const articles = db.prepare(`
-    SELECT id, slug, title, body_html, tags, published_at
+    SELECT slug, title, published_at
     FROM articles WHERE status = 'published'
-    ORDER BY published_at DESC LIMIT 5
+    ORDER BY published_at DESC LIMIT 8
   `).all() as Article[];
 
   const microPosts = db.prepare(`
@@ -23,32 +23,45 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
     ORDER BY created_at DESC LIMIT 5
   `).all() as MicroPost[];
 
-  const content = `
-    <h1>${siteTitle}</h1>
-    ${siteDescription ? `<p>${siteDescription}</p>` : ''}
+  const content = (
+    <div>
+      {articles.length > 0 && (
+        <section>
+          <p class="section-label">Articles</p>
+          <ul class="post-list">
+            {articles.map(a => (
+              <li>
+                <span class="post-date">{fmtDate(a.published_at)}</span>
+                <span class="post-title">
+                  <a href={`/articles/${a.slug}`}>{a.title}</a>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <a href="/articles" class="see-all">All articles →</a>
+        </section>
+      )}
 
-    ${articles.length > 0 ? `
-      <section>
-        <h2>Recent articles</h2>
-        ${articles.map(a => `
-          <article>
-            <h3><a href="/articles/${a.slug}">${a.title}</a></h3>
-            <small>${a.published_at ? new Date(a.published_at).toLocaleDateString() : ''}</small>
-          </article>`).join('')}
-        <p><a href="/articles">All articles →</a></p>
-      </section>` : ''}
+      {microPosts.length > 0 && (
+        <section style="margin-top:3rem">
+          <p class="section-label">Notes</p>
+          <ul class="note-stream">
+            {microPosts.map(p => (
+              <li>
+                <div class="note-meta">{fmtDate(p.created_at)}</div>
+                <div class="note-body">{p.body_html}</div>
+              </li>
+            ))}
+          </ul>
+          <a href="/micro" class="see-all">All notes →</a>
+        </section>
+      )}
 
-    ${microPosts.length > 0 ? `
-      <section>
-        <h2>Recent notes</h2>
-        ${microPosts.map(p => `
-          <article>
-            <div>${p.body_html}</div>
-            <small>${new Date(p.created_at).toLocaleDateString()}</small>
-          </article>`).join('')}
-        <p><a href="/micro">All notes →</a></p>
-      </section>` : ''}
-  `;
+      {articles.length === 0 && microPosts.length === 0 && (
+        <p style="color:var(--pico-muted-color)">Nothing published yet.</p>
+      )}
+    </div>
+  );
 
   return publicLayout({ title: 'Home', siteTitle, description: siteDescription, db }, content);
 }
