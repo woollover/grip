@@ -58,6 +58,10 @@ else
   useradd -r -m -d "/home/$GRIP_USER" -s /bin/bash "$GRIP_USER"
   ok "User '${GRIP_USER}' created."
 fi
+info "Granting '${GRIP_USER}' permission to restart its own service…"
+echo "${GRIP_USER} ALL=(ALL) NOPASSWD: /bin/systemctl restart grip" > /etc/sudoers.d/grip
+chmod 440 /etc/sudoers.d/grip
+ok "Sudoers rule added."
 echo
 
 # ── Step 3: Download latest release ───────────────────────────────────────────
