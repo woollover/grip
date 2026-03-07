@@ -21,25 +21,22 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build
         run: |
           mkdir -p dist/linux-x64 dist/linux-arm64
           bun build --compile --target=bun-linux-x64   src/cli/index.ts --outfile dist/linux-x64/grip
           bun build --compile --target=bun-linux-arm64 src/cli/index.ts --outfile dist/linux-arm64/grip
+          ls -lh dist/linux-x64/grip dist/linux-arm64/grip
 
-      - name: Package linux-x64
+      - name: Package
         run: |
-          cp -r public dist/linux-x64/
-          cp grip.toml.example grip.service Caddyfile.example dist/linux-x64/
-          tar -czf grip-linux-x64.tar.gz -C dist/linux-x64 .
-
-      - name: Package linux-arm64
-        run: |
-          cp -r public dist/linux-arm64/
-          cp grip.toml.example grip.service Caddyfile.example dist/linux-arm64/
+          cp -r public grip.toml.example grip.service Caddyfile.example dist/linux-x64/
+          cp -r public grip.toml.example grip.service Caddyfile.example dist/linux-arm64/
+          tar -czf grip-linux-x64.tar.gz   -C dist/linux-x64  .
           tar -czf grip-linux-arm64.tar.gz -C dist/linux-arm64 .
+          ls -lh grip-linux-x64.tar.gz grip-linux-arm64.tar.gz
 
       - name: Create GitHub Release
         run: |
