@@ -51,9 +51,14 @@
   --g-lh-tight:     1.3;
 
   /* Shape */
-  --g-r:    4px;
-  --g-r-sm: 2px;
-  --g-r-lg: 8px;
+  --g-r:       4px;
+  --g-r-sm:    2px;
+  --g-r-lg:    8px;
+  --g-r-input: 4px;  /* capped radius for inputs/textareas/selects */
+
+  /* Density */
+  --g-pad-y: 0.45rem;
+  --g-pad-x: 1rem;
 
   /* Motion */
   --g-t: 0.15s ease;
@@ -238,7 +243,7 @@ button, [role="button"] {
   font-size: 0.84rem;
   font-weight: 500;
   line-height: 1;
-  padding: 0.45rem 1rem;
+  padding: var(--g-pad-y) var(--g-pad-x);
   border-radius: var(--g-r);
   border: 1px solid var(--g-accent);
   cursor: pointer;
@@ -307,8 +312,8 @@ textarea {
   color: var(--g-text);
   background: var(--g-surface);
   border: 1px solid var(--g-border);
-  border-radius: var(--g-r);
-  padding: 0.45rem 0.75rem;
+  border-radius: min(var(--g-r), 10px);
+  padding: var(--g-pad-y) 0.75rem;
   margin-top: 0.3rem;
   transition: border-color var(--g-t), box-shadow var(--g-t);
   -webkit-appearance: none;
@@ -321,7 +326,7 @@ input[type="color"] {
   padding: 0.1rem 0.2rem;
   background: var(--g-surface);
   border: 1px solid var(--g-border);
-  border-radius: var(--g-r);
+  border-radius: min(var(--g-r), 10px);
   margin-top: 0.3rem;
   cursor: pointer;
 }

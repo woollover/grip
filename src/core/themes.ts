@@ -131,69 +131,83 @@ export interface ThemeCustom {
   colorBg?:     string;
   colorText?:   string;
   colorMuted?:  string;
+  radius?:      string;  // CSS length value for --g-r
+  spacing?:     string;  // named density: 'compact' | 'default' | 'relaxed'
 }
 
 // Default field values for the theme editor form, per preset.
 export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
   light: {
     colorScheme: 'light',
-    fontBody:    'system-ui, -apple-system, sans-serif',
+    fontBody:    'var(--font-sans)',
     fontHeading: '',
-    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
+    fontMono:    'var(--font-mono)',
     colorAccent: '#1971c2',
     colorBg:     '#ffffff',
     colorText:   '#343a40',
     colorMuted:  '#868e96',
+    radius:      '6px',
+    spacing:     'default',
   },
   dark: {
     colorScheme: 'dark',
-    fontBody:    'system-ui, -apple-system, sans-serif',
+    fontBody:    'var(--font-sans)',
     fontHeading: '',
-    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
+    fontMono:    'var(--font-mono)',
     colorAccent: '#74c0fc',
     colorBg:     '#1a1d23',
     colorText:   '#ced4da',
     colorMuted:  '#868e96',
+    radius:      '6px',
+    spacing:     'default',
   },
   coder: {
     colorScheme: 'dark',
-    fontBody:    "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    fontBody:    'var(--font-system-ui)',
     fontHeading: '',
-    fontMono:    "'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace",
+    fontMono:    'var(--font-monospace-code)',
     colorAccent: '#58a6ff',
     colorBg:     '#0d1117',
     colorText:   '#e6edf3',
     colorMuted:  '#8b949e',
+    radius:      '4px',
+    spacing:     'compact',
   },
   cyberpunk: {
     colorScheme: 'dark',
-    fontBody:    "'Courier New', Courier, monospace",
-    fontHeading: "'Courier New', Courier, monospace",
-    fontMono:    "'Courier New', Courier, monospace",
+    fontBody:    'var(--font-monospace-slab-serif)',
+    fontHeading: 'var(--font-monospace-slab-serif)',
+    fontMono:    'var(--font-monospace-slab-serif)',
     colorAccent: '#00ff88',
     colorBg:     '#0a0a12',
     colorText:   '#c8c8e8',
     colorMuted:  '#6868a0',
+    radius:      '0px',
+    spacing:     'compact',
   },
   literary: {
     colorScheme: 'light',
-    fontBody:    "Palatino, 'Palatino Linotype', 'Book Antiqua', serif",
-    fontHeading: "Optima, Candara, 'Noto Sans', sans-serif",
-    fontMono:    "'Courier New', Courier, monospace",
+    fontBody:    'var(--font-old-style)',
+    fontHeading: 'var(--font-classical-humanist)',
+    fontMono:    'var(--font-mono)',
     colorAccent: '#8b5e3c',
     colorBg:     '#faf8f3',
     colorText:   '#2c2a24',
     colorMuted:  '#9a9080',
+    radius:      '4px',
+    spacing:     'relaxed',
   },
   ink: {
     colorScheme: 'light',
-    fontBody:    "Georgia, 'Times New Roman', serif",
+    fontBody:    'var(--font-transitional)',
     fontHeading: '',
-    fontMono:    "'Courier New', Courier, monospace",
+    fontMono:    'var(--font-mono)',
     colorAccent: '#1a3a6e',
     colorBg:     '#ffffff',
     colorText:   '#111111',
     colorMuted:  '#666666',
+    radius:      '2px',
+    spacing:     'relaxed',
   },
 };
 
@@ -231,6 +245,26 @@ export function buildOverrideCss(custom: ThemeCustom): string {
     lines.push(`  --g-text-muted: ${m};`);
     lines.push(`  --g-border: color-mix(in srgb, ${m} 40%, transparent);`);
     lines.push(`  --g-border-faint: color-mix(in srgb, ${m} 18%, transparent);`);
+  }
+
+  if (custom.radius) {
+    const r = custom.radius;
+    const rNum = parseFloat(r);
+    const unit = r.replace(/[\d.]/g, '') || 'px';
+    lines.push(`  --g-r:    ${r};`);
+    lines.push(`  --g-r-sm: ${Math.max(0, rNum / 2)}${unit};`);
+    lines.push(`  --g-r-lg: ${rNum * 2}${unit};`);
+  }
+
+  if (custom.spacing) {
+    const densities: Record<string, [string, string]> = {
+      compact: ['0.28rem', '0.75rem'],
+      default: ['0.45rem', '1rem'],
+      relaxed: ['0.65rem', '1.25rem'],
+    };
+    const [py, px] = densities[custom.spacing] ?? densities.default;
+    lines.push(`  --g-pad-y: ${py};`);
+    lines.push(`  --g-pad-x: ${px};`);
   }
 
   if (!lines.length) return '';

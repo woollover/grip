@@ -348,6 +348,8 @@ export function renderThemeSettings(db: Database): JSX.Element {
     colorBg:     custom?.colorBg     ?? defaults.colorBg,
     colorText:   custom?.colorText   ?? defaults.colorText,
     colorMuted:  custom?.colorMuted  ?? defaults.colorMuted,
+    radius:      custom?.radius      ?? defaults.radius,
+    spacing:     custom?.spacing     ?? defaults.spacing,
   };
 
   const themeScript = `
@@ -362,6 +364,14 @@ export function renderThemeSettings(db: Database): JSX.Element {
     fontBody:    '--g-font-body',
     fontMono:    '--g-font-mono',
   };
+
+  const SPACING_MAP = {
+    compact: { py: '0.28rem', px: '0.75rem' },
+    default: { py: '0.45rem', px: '1rem'    },
+    relaxed: { py: '0.65rem', px: '1.25rem' },
+  };
+
+  let currentScheme = '${eff.colorScheme}';
 
   function applyLivePreview() {
     const form = document.getElementById('theme-form');
@@ -384,8 +394,23 @@ export function renderThemeSettings(db: Database): JSX.Element {
       ? 'h1,h2,h3,h4,h5,h6 { font-family: ' + headingFont + ' !important; }'
       : '';
 
-    const scheme = form.querySelector('[name=colorScheme]:checked');
-    root.setAttribute('data-theme', scheme && scheme.value === 'dark' ? 'dark' : 'light');
+    // Radius
+    const r = form.elements['radius']?.value;
+    if (r) {
+      const rNum = parseFloat(r);
+      const unit = r.replace(/[\\d.]/g, '') || 'px';
+      root.style.setProperty('--g-r',    r);
+      root.style.setProperty('--g-r-sm', Math.max(0, rNum / 2) + unit);
+      root.style.setProperty('--g-r-lg', (rNum * 2) + unit);
+    }
+
+    // Spacing / density
+    const sp = form.elements['spacing']?.value;
+    const spVals = SPACING_MAP[sp] ?? SPACING_MAP.default;
+    root.style.setProperty('--g-pad-y', spVals.py);
+    root.style.setProperty('--g-pad-x', spVals.px);
+
+    root.setAttribute('data-theme', currentScheme === 'dark' ? 'dark' : 'light');
   }
 
   window.applyPreset = function(name) {
@@ -393,6 +418,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
     if (!p) return;
     const form = document.getElementById('theme-form');
     document.getElementById('theme-hidden').value = name;
+    currentScheme = p.colorScheme;
     form.elements['fontBody'].value    = p.fontBody;
     form.elements['fontHeading'].value = p.fontHeading;
     form.elements['fontMono'].value    = p.fontMono;
@@ -400,8 +426,55 @@ export function renderThemeSettings(db: Database): JSX.Element {
     form.elements['colorBg'].value     = p.colorBg;
     form.elements['colorText'].value   = p.colorText;
     form.elements['colorMuted'].value  = p.colorMuted;
-    const radio = form.querySelector('[name=colorScheme][value="' + p.colorScheme + '"]');
-    if (radio) radio.checked = true;
+    form.elements['radius'].value      = p.radius  ?? '6px';
+    form.elements['spacing'].value     = p.spacing ?? 'default';
+    applyLivePreview();
+  };
+
+  window.scramble = function() {
+    const form = document.getElementById('theme-form');
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const randHsl = (h, sl, ll) => {
+      const hue = h ?? Math.floor(Math.random() * 360);
+      const s   = sl ?? (40 + Math.floor(Math.random() * 50));
+      const l   = ll ?? (20 + Math.floor(Math.random() * 60));
+      return hslToHex(hue, s, l);
+    };
+    function hslToHex(h, s, l) {
+      s /= 100; l /= 100;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => { const k = (n + h / 30) % 12; const c = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1))); return Math.round(255 * c).toString(16).padStart(2, '0'); };
+      return '#' + f(0) + f(8) + f(4);
+    }
+
+    currentScheme = pick(['light', 'dark']);
+    const isDark = currentScheme === 'dark';
+    const hue = Math.floor(Math.random() * 360);
+    const bg  = isDark ? randHsl(hue, 15, 8 + Math.floor(Math.random() * 14))
+                       : randHsl(hue, 10, 88 + Math.floor(Math.random() * 10));
+    const accent = randHsl(hue, 55 + Math.floor(Math.random() * 35), isDark ? 55 + Math.floor(Math.random() * 25) : 30 + Math.floor(Math.random() * 25));
+    const text   = isDark ? randHsl(hue, 8, 75 + Math.floor(Math.random() * 20))
+                          : randHsl(hue, 8, 5  + Math.floor(Math.random() * 20));
+    const muted  = isDark ? randHsl(hue, 12, 45 + Math.floor(Math.random() * 20))
+                          : randHsl(hue, 12, 45 + Math.floor(Math.random() * 20));
+
+    const fonts = ['var(--font-system-ui)','var(--font-sans)','var(--font-neo-grotesque)',
+      'var(--font-humanist)','var(--font-geometric-humanist)','var(--font-classical-humanist)',
+      'var(--font-rounded-sans)','var(--font-transitional)','var(--font-old-style)',
+      'var(--font-serif)','var(--font-slab-serif)','var(--font-antique)',
+      'var(--font-didone)','var(--font-handwritten)','var(--font-industrial)'];
+    const radii   = ['0px','2px','4px','6px','10px','16px','999px'];
+    const spacings = ['compact','default','relaxed'];
+
+    form.elements['colorAccent'].value = accent;
+    form.elements['colorBg'].value     = bg;
+    form.elements['colorText'].value   = text;
+    form.elements['colorMuted'].value  = muted;
+    form.elements['fontBody'].value    = pick(fonts);
+    form.elements['fontHeading'].value = Math.random() < 0.4 ? '' : pick(fonts);
+    form.elements['fontMono'].value    = pick(['var(--font-mono)','var(--font-monospace-code)','var(--font-monospace-slab-serif)']);
+    form.elements['radius'].value      = pick(radii);
+    form.elements['spacing'].value     = pick(spacings);
     applyLivePreview();
   };
 
@@ -440,30 +513,15 @@ export function renderThemeSettings(db: Database): JSX.Element {
           <input type="hidden" name="theme" id="theme-hidden" value={currentTheme} />
 
           {panelLabel('Preset')}
-          <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
+          <div style="margin-bottom:0.75rem">
+            <select style="width:100%" onchange="applyPreset(this.value)">
             {ALL_PRESETS.map(p => (
-              <button type="button"
-                class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
-                style="padding:0.18rem 0.6rem;font-size:0.73rem"
-                onclick={`applyPreset("${p.name}")`}>
-                {p.label}
-              </button>
+              <option value={p.name} selected={currentTheme === p.name}>{p.label}</option>
             ))}
+            </select>
           </div>
 
-          {panelLabel('Color scheme')}
-          <div style="display:flex;gap:1rem">
-            <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
-              <input type="radio" name="colorScheme" value="light"
-                checked={eff.colorScheme === 'light'} style="margin:0;width:auto" /> Light
-            </label>
-            <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
-              <input type="radio" name="colorScheme" value="dark"
-                checked={eff.colorScheme === 'dark'} style="margin:0;width:auto" /> Dark
-            </label>
-          </div>
-
-          {panelLabel('Colours')}
+{panelLabel('Colours')}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem">
             {colorInput('colorAccent', 'Accent',     eff.colorAccent)}
             {colorInput('colorBg',     'Background', eff.colorBg)}
@@ -476,11 +534,21 @@ export function renderThemeSettings(db: Database): JSX.Element {
             Body
             <select name="fontBody">
               <FontOptions options={[
-                ['system-ui, sans-serif',                                        'System sans-serif'],
-                ["Georgia, 'Times New Roman', serif",                            'Georgia'],
-                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
-                ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
-                ["'Courier New', Courier, monospace",                            'Courier New'],
+                ['var(--font-system-ui)',          'System UI'],
+                ['var(--font-sans)',               'System sans-serif'],
+                ['var(--font-neo-grotesque)',      'Neo-grotesque (Helvetica-like)'],
+                ['var(--font-humanist)',           'Humanist (Gill Sans-like)'],
+                ['var(--font-geometric-humanist)', 'Geometric (Futura-like)'],
+                ['var(--font-classical-humanist)', 'Classical humanist (Optima-like)'],
+                ['var(--font-rounded-sans)',       'Rounded sans'],
+                ['var(--font-industrial)',         'Industrial'],
+                ['var(--font-transitional)',       'Transitional serif (Times-like)'],
+                ['var(--font-old-style)',          'Old-style serif (Garamond-like)'],
+                ['var(--font-serif)',              'System serif'],
+                ['var(--font-slab-serif)',         'Slab serif'],
+                ['var(--font-antique)',            'Antique'],
+                ['var(--font-didone)',             'Didone (Bodoni-like)'],
+                ['var(--font-handwritten)',        'Handwritten'],
               ]} current={eff.fontBody} />
             </select>
           </label>
@@ -488,11 +556,22 @@ export function renderThemeSettings(db: Database): JSX.Element {
             Headings
             <select name="fontHeading">
               <FontOptions options={[
-                ['',                                                              'Same as body'],
-                ['system-ui, sans-serif',                                        'System sans-serif'],
-                ["Georgia, 'Times New Roman', serif",                            'Georgia'],
-                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
-                ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
+                ['',                               'Same as body'],
+                ['var(--font-system-ui)',          'System UI'],
+                ['var(--font-sans)',               'System sans-serif'],
+                ['var(--font-neo-grotesque)',      'Neo-grotesque (Helvetica-like)'],
+                ['var(--font-humanist)',           'Humanist (Gill Sans-like)'],
+                ['var(--font-geometric-humanist)', 'Geometric (Futura-like)'],
+                ['var(--font-classical-humanist)', 'Classical humanist (Optima-like)'],
+                ['var(--font-rounded-sans)',       'Rounded sans'],
+                ['var(--font-industrial)',         'Industrial'],
+                ['var(--font-transitional)',       'Transitional serif (Times-like)'],
+                ['var(--font-old-style)',          'Old-style serif (Garamond-like)'],
+                ['var(--font-serif)',              'System serif'],
+                ['var(--font-slab-serif)',         'Slab serif'],
+                ['var(--font-antique)',            'Antique'],
+                ['var(--font-didone)',             'Didone (Bodoni-like)'],
+                ['var(--font-handwritten)',        'Handwritten'],
               ]} current={eff.fontHeading} />
             </select>
           </label>
@@ -500,14 +579,51 @@ export function renderThemeSettings(db: Database): JSX.Element {
             Code font
             <select name="fontMono">
               <FontOptions options={[
-                ["ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",  'System mono'],
-                ["'Courier New', Courier, monospace",                            'Courier New'],
-                ["'Fira Code', 'Fira Mono', 'DejaVu Sans Mono', monospace",      'Fira Code'],
+                ['var(--font-mono)',                 'System mono'],
+                ['var(--font-monospace-code)',       'Monospace code'],
+                ['var(--font-monospace-slab-serif)', 'Monospace slab serif'],
               ]} current={eff.fontMono} />
             </select>
           </label>
 
-          <button type="submit" style="width:100%">Save theme</button>
+          {panelLabel('Shape')}
+          <label style="margin-bottom:0.75rem">
+            Corner radius
+            <select name="radius">
+              {([
+                ['0px',   'Flat'],
+                ['2px',   'Subtle'],
+                ['4px',   'Default'],
+                ['6px',   'Soft'],
+                ['10px',  'Rounded'],
+                ['16px',  'Pillowy'],
+                ['999px', 'Pill'],
+              ] as [string,string][]).map(([v, l]) => (
+                <option value={v} selected={eff.radius === v}>{l}</option>
+              ))}
+            </select>
+          </label>
+
+          {panelLabel('Density')}
+          <label style="margin-bottom:1rem">
+            Spacing
+            <select name="spacing">
+              {([
+                ['compact', 'Compact'],
+                ['default', 'Default'],
+                ['relaxed', 'Relaxed'],
+              ] as [string,string][]).map(([v, l]) => (
+                <option value={v} selected={eff.spacing === v}>{l}</option>
+              ))}
+            </select>
+          </label>
+
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+            <button type="submit" style="flex:1">Save theme</button>
+            <button type="button" onclick="scramble()"
+              style="flex:1;background:var(--g-surface);color:var(--g-text);border-color:var(--g-border)"
+              class="outline secondary">🎲 Scramble</button>
+          </div>
         </form>
 
         {/* ── Right: kitchen sink ── */}
@@ -548,6 +664,7 @@ export function handleThemeChange(
     colorScheme?: string;
     fontBody?: string; fontHeading?: string; fontMono?: string;
     colorAccent?: string; colorBg?: string; colorText?: string; colorMuted?: string;
+    radius?: string; spacing?: string;
   }
 ): void {
   const validThemes: ThemeName[] = ['literary', 'ink', 'coder', 'cyberpunk'];
@@ -555,7 +672,7 @@ export function handleThemeChange(
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('theme', theme);
 
   const custom: ThemeCustom = {};
-  if (body.colorScheme === 'light' || body.colorScheme === 'dark') custom.colorScheme = body.colorScheme;
+  // colorScheme is derived from the preset, not user-editable directly
   if (body.fontBody?.trim())    custom.fontBody    = body.fontBody.trim();
   if (body.fontHeading?.trim()) custom.fontHeading = body.fontHeading.trim();
   if (body.fontMono?.trim())    custom.fontMono    = body.fontMono.trim();
@@ -563,6 +680,8 @@ export function handleThemeChange(
   if (isHexColor(body.colorBg))     custom.colorBg     = body.colorBg!;
   if (isHexColor(body.colorText))   custom.colorText   = body.colorText!;
   if (isHexColor(body.colorMuted))  custom.colorMuted  = body.colorMuted!;
+  if (isValidRadius(body.radius))   custom.radius      = body.radius!;
+  if (['compact','default','relaxed'].includes(body.spacing ?? '')) custom.spacing = body.spacing as 'compact'|'default'|'relaxed';
 
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)')
     .run('theme_custom', JSON.stringify(custom));
@@ -570,4 +689,8 @@ export function handleThemeChange(
 
 function isHexColor(s: string | undefined): boolean {
   return typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s);
+}
+
+function isValidRadius(s: string | undefined): boolean {
+  return typeof s === 'string' && /^\d+(\.\d+)?(px|rem|em)$/.test(s);
 }
