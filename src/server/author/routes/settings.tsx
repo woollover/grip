@@ -20,6 +20,30 @@ function getConfig(db: Database): { title: string; description: string; domain: 
   };
 }
 
+function getPublicitySettings(db: Database) {
+  const get = (key: string, fallback: string) =>
+    (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)?.value ?? fallback;
+  return {
+    mode:         get('publicity_mode', 'public') as 'public' | 'private',
+    showArticles: get('show_articles',  '1') === '1',
+    showMicro:    get('show_micro',     '1') === '1',
+    rssEnabled:   get('rss_enabled',    '1') === '1',
+  };
+}
+
+export function handlePublicityUpdate(db: Database, body: any): void {
+  const mode         = body.publicity_mode === 'private' ? 'private' : 'public';
+  const showArticles = body.show_articles  === '1' ? '1' : '0';
+  const showMicro    = body.show_micro     === '1' ? '1' : '0';
+  const rssEnabled   = body.rss_enabled    === '1' ? '1' : '0';
+  const set = (k: string, v: string) =>
+    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(k, v);
+  set('publicity_mode', mode);
+  set('show_articles',  showArticles);
+  set('show_micro',     showMicro);
+  set('rss_enabled',    rssEnabled);
+}
+
 function getApStatus(db: Database): { enabled: boolean; username: string; domain: string; contacts: number } | null {
   const enabled = (db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as { value: string } | null)?.value;
   if (!enabled) return null;
@@ -32,6 +56,7 @@ function getApStatus(db: Database): { enabled: boolean; username: string; domain
 export function renderSettings(db: Database): JSX.Element {
   const config = getConfig(db);
   const ap = getApStatus(db);
+  const pub = getPublicitySettings(db);
 
   const apSection = ap ? (
     <section>
@@ -107,6 +132,44 @@ accept_replies = true`}</pre>
 
           <hr style="margin:0" />
 
+          <section>
+            <form method="POST" action="/settings/publicity">
+              <div class="page-hd" style="margin-bottom:0.75rem">
+                <h3>Publicity</h3>
+                <button type="submit" class="outline">Save</button>
+              </div>
+              <label>
+                Visibility
+                <select name="publicity_mode">
+                  <option value="public"  selected={pub.mode === 'public'}>Public</option>
+                  <option value="private" selected={pub.mode === 'private'}>Private</option>
+                </select>
+              </label>
+              <p style="font-size:0.73rem;color:var(--g-text-muted);margin:-0.25rem 0 0.85rem">
+                {pub.mode === 'private'
+                  ? 'Only published pages are visible to visitors.'
+                  : 'Choose what content to expose publicly.'}
+              </p>
+              <label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal;margin-bottom:0.4rem">
+                <input type="checkbox" name="show_articles" value="1"
+                  checked={pub.showArticles} disabled={pub.mode === 'private'} />
+                Show articles
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal;margin-bottom:0.4rem">
+                <input type="checkbox" name="show_micro" value="1"
+                  checked={pub.showMicro} disabled={pub.mode === 'private'} />
+                Show micro posts
+              </label>
+              <label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal">
+                <input type="checkbox" name="rss_enabled" value="1"
+                  checked={pub.rssEnabled} disabled={pub.mode === 'private'} />
+                Enable RSS feeds
+              </label>
+            </form>
+          </section>
+
+          <hr style="margin:0" />
+
           {apSection}
 
           <hr style="margin:0" />
@@ -138,6 +201,13 @@ accept_replies = true`}</pre>
 
 // ── Theme editor ──────────────────────────────────────────────────────────────
 
+const ALL_PRESETS: { name: ThemeName; label: string }[] = [
+  { name: 'literary',  label: 'Literary'  },
+  { name: 'ink',       label: 'Ink'       },
+  { name: 'coder',     label: 'Coder'     },
+  { name: 'cyberpunk', label: 'Cyberpunk' },
+];
+
 function FontOptions({ options, current }: {
   options: [value: string, label: string][];
   current: string;
@@ -151,11 +221,123 @@ function FontOptions({ options, current }: {
   );
 }
 
+function KsSectionLabel({ children }: { children: string }): JSX.Element {
+  return (
+    <p style="font-size:0.55rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--g-text-muted);opacity:0.55;margin:1.5rem 0 0.6rem;border-top:1px solid var(--g-border-faint);padding-top:0.75rem">
+      {children}
+    </p>
+  );
+}
+
+function KitchenSink(): JSX.Element {
+  return (
+    <div style="font-size:0.875rem;line-height:1.65">
+
+      {/* Typography */}
+      <KsSectionLabel>Typography</KsSectionLabel>
+      <h1 style="margin-bottom:0.2rem">Heading 1 — The quick brown fox</h1>
+      <h2 style="margin-bottom:0.2rem">Heading 2 — Jumps over the lazy dog</h2>
+      <h3 style="margin-bottom:0.2rem">Heading 3 — Pack my box with five dozen</h3>
+      <h4 style="margin-bottom:0.75rem">Heading 4 — How vexingly quick</h4>
+      <p>Body text. A paragraph with <a href="#">a hyperlink</a>, <strong>bold text</strong>, <em>italic text</em>, and <code>inline code</code>. Muted text below.</p>
+      <p style="color:var(--g-text-muted);font-size:0.8rem">A muted caption or secondary line of text.</p>
+      <blockquote style="margin:0.75rem 0">
+        A blockquote. The sovereign web belongs to those who tend it.
+      </blockquote>
+
+      {/* Buttons */}
+      <KsSectionLabel>Buttons</KsSectionLabel>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
+        <button type="button">Primary</button>
+        <button type="button" class="outline">Outline</button>
+        <button type="button" class="outline secondary">Secondary</button>
+        <button type="button" disabled>Disabled</button>
+      </div>
+
+      {/* Forms */}
+      <KsSectionLabel>Forms</KsSectionLabel>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
+        <label style="margin:0">
+          Text input
+          <input type="text" placeholder="Placeholder…" style="margin-top:0.2rem" />
+        </label>
+        <label style="margin:0">
+          Select
+          <select style="margin-top:0.2rem">
+            <option>Option A</option>
+            <option>Option B</option>
+          </select>
+        </label>
+      </div>
+      <label style="margin-top:0.5rem;margin-bottom:0;display:block">
+        Textarea
+        <textarea rows={2} placeholder="Some text…" style="margin-top:0.2rem" />
+      </label>
+
+      {/* Code block */}
+      <KsSectionLabel>Code</KsSectionLabel>
+      <pre style="margin:0">{`function greet(name: string) {
+  return \`Hello, \${name}!\`;
+}`}</pre>
+
+      {/* Tags */}
+      <KsSectionLabel>Tags</KsSectionLabel>
+      <div class="tag-cloud">
+        <a href="#" class="tag">design</a>
+        <a href="#" class="tag tag--active">active</a>
+        <a href="#" class="tag">writing</a>
+        <a href="#" class="tag">code</a>
+      </div>
+
+      {/* Post list */}
+      <KsSectionLabel>Post list</KsSectionLabel>
+      <ul class="post-list">
+        <li>
+          <span class="post-date">12 Jan 2025</span>
+          <span class="post-title"><a href="#">On the art of slow writing</a></span>
+        </li>
+        <li>
+          <span class="post-date">3 Dec 2024</span>
+          <span class="post-title"><a href="#">A field guide to digital sovereignty</a></span>
+        </li>
+      </ul>
+
+      {/* Note */}
+      <KsSectionLabel>Note stream</KsSectionLabel>
+      <ul class="note-stream">
+        <li>
+          <div class="note-meta">2 hours ago</div>
+          <div class="note-body"><p>A micro post. Short, direct, unadorned. The web at human pace.</p></div>
+        </li>
+      </ul>
+
+      {/* Table */}
+      <KsSectionLabel>Table</KsSectionLabel>
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          <tr><td>On slowness</td><td>Published</td><td>Jan 2025</td></tr>
+          <tr><td>Draft notes</td><td>Draft</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      {/* Pagination */}
+      <KsSectionLabel>Pagination</KsSectionLabel>
+      <nav class="pagination">
+        <span class="pagination-disabled">← Newer</span>
+        <span class="pagination-info">Page 1 of 4</span>
+        <a href="#">Older →</a>
+      </nav>
+
+    </div>
+  );
+}
+
 export function renderThemeSettings(db: Database): JSX.Element {
   const themeRow = db.prepare('SELECT value FROM config WHERE key = ?').get('theme') as { value: string } | null;
-  const currentTheme = (themeRow?.value ?? 'light') as ThemeName;
+  const currentTheme = (themeRow?.value ?? 'literary') as ThemeName;
   const custom = readThemeCustom(db);
-  const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.light;
+  const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.literary;
 
   const eff = {
     colorScheme: custom?.colorScheme ?? defaults.colorScheme,
@@ -168,35 +350,27 @@ export function renderThemeSettings(db: Database): JSX.Element {
     colorMuted:  custom?.colorMuted  ?? defaults.colorMuted,
   };
 
-  const lightPresets: { name: ThemeName; label: string }[] = [
-    { name: 'literary',  label: 'Literary'  },
-    { name: 'ink',       label: 'Ink'       },
-  ];
-  const darkPresets: { name: ThemeName; label: string }[] = [
-    { name: 'coder',     label: 'Coder'     },
-    { name: 'cyberpunk', label: 'Cyberpunk' },
-  ];
-
   const themeScript = `
 (function() {
   const PRESETS = ${JSON.stringify(PRESET_DEFAULTS)};
 
   const VAR_MAP = {
-    fontBody:    '--g-font-body',
-    fontMono:    '--g-font-mono',
     colorAccent: '--g-accent',
     colorBg:     '--g-bg',
     colorText:   '--g-text',
     colorMuted:  '--g-text-muted',
+    fontBody:    '--g-font-body',
+    fontMono:    '--g-font-mono',
   };
 
   function applyLivePreview() {
     const form = document.getElementById('theme-form');
+    if (!form) return;
     const root = document.documentElement;
 
     for (const [name, cssVar] of Object.entries(VAR_MAP)) {
-      const val = form.elements[name] && form.elements[name].value;
-      if (val) root.style.setProperty(cssVar, val);
+      const el = form.elements[name];
+      if (el && el.value) root.style.setProperty(cssVar, el.value);
     }
 
     const headingFont = form.elements['fontHeading'] && form.elements['fontHeading'].value;
@@ -231,23 +405,25 @@ export function renderThemeSettings(db: Database): JSX.Element {
     applyLivePreview();
   };
 
-  const form = document.getElementById('theme-form');
-  form.addEventListener('input', applyLivePreview);
-  form.addEventListener('change', applyLivePreview);
+  document.getElementById('theme-form').addEventListener('input', applyLivePreview);
+  document.getElementById('theme-form').addEventListener('change', applyLivePreview);
   applyLivePreview();
 })();
 `;
 
   const colorInput = (name: string, label: string, value: string) => (
-    <label style="margin-bottom:0">
-      <span style="font-size:0.72rem;opacity:0.7">{label}</span>
-      <input type="color" name={name} value={value}
-        style="width:100%;height:1.9rem;padding:0.1rem 0.2rem;cursor:pointer;border-radius:3px;margin-top:0.2rem" />
+    <label style="margin-bottom:0.5rem">
+      <span style="font-size:0.72rem;opacity:0.65;font-weight:normal">{label}</span>
+      <input type="color" name={name} value={value} style="margin-top:0.2rem" />
     </label>
   );
 
+  const panelLabel = (text: string) => (
+    <p style="font-size:0.58rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--g-text-muted);opacity:0.5;margin:1.25rem 0 0.55rem">{text}</p>
+  );
+
   const content = (
-    <div style="max-width:860px;margin:0 auto">
+    <div>
       <div class="page-hd" style="margin-bottom:1.25rem">
         <div style="display:flex;align-items:center;gap:0.75rem">
           <a href="/settings" class="outline secondary" role="button">← Back</a>
@@ -256,112 +432,90 @@ export function renderThemeSettings(db: Database): JSX.Element {
         <button type="submit" form="theme-form">Save theme</button>
       </div>
 
-      <section style="margin-bottom:1rem;display:flex;gap:1.5rem;align-items:flex-start">
-        <div>
-          <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.5;margin-bottom:0.4rem">Light</p>
-          <div style="display:flex;gap:0.3rem">
-            {lightPresets.map(p => (
+      <div style="display:grid;grid-template-columns:240px 1fr;gap:2rem;align-items:start">
+
+        {/* ── Left: controls ── */}
+        <form id="theme-form" method="POST" action="/settings/theme"
+          style="position:sticky;top:1rem">
+          <input type="hidden" name="theme" id="theme-hidden" value={currentTheme} />
+
+          {panelLabel('Preset')}
+          <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
+            {ALL_PRESETS.map(p => (
               <button type="button"
                 class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
-                style="padding:0.2rem 0.65rem;font-size:0.75rem"
-                onclick={`applyPreset('${p.name}')`}>
+                style="padding:0.18rem 0.6rem;font-size:0.73rem"
+                onclick={`applyPreset("${p.name}")`}>
                 {p.label}
               </button>
             ))}
           </div>
-        </div>
-        <div>
-          <p style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.5;margin-bottom:0.4rem">Dark</p>
-          <div style="display:flex;gap:0.3rem">
-            {darkPresets.map(p => (
-              <button type="button"
-                class={`outline${currentTheme === p.name ? '' : ' secondary'}`}
-                style="padding:0.2rem 0.65rem;font-size:0.75rem"
-                onclick={`applyPreset('${p.name}')`}>
-                {p.label}
-              </button>
-            ))}
+
+          {panelLabel('Color scheme')}
+          <div style="display:flex;gap:1rem">
+            <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
+              <input type="radio" name="colorScheme" value="light"
+                checked={eff.colorScheme === 'light'} style="margin:0;width:auto" /> Light
+            </label>
+            <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
+              <input type="radio" name="colorScheme" value="dark"
+                checked={eff.colorScheme === 'dark'} style="margin:0;width:auto" /> Dark
+            </label>
           </div>
-        </div>
-      </section>
 
-      <form id="theme-form" method="POST" action="/settings/theme">
-        <input type="hidden" name="theme" id="theme-hidden" value={currentTheme} />
+          {panelLabel('Colours')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem">
+            {colorInput('colorAccent', 'Accent',     eff.colorAccent)}
+            {colorInput('colorBg',     'Background', eff.colorBg)}
+            {colorInput('colorText',   'Text',       eff.colorText)}
+            {colorInput('colorMuted',  'Muted',      eff.colorMuted)}
+          </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:1.5rem;align-items:start">
+          {panelLabel('Typography')}
+          <label style="margin-bottom:0.5rem">
+            Body
+            <select name="fontBody">
+              <FontOptions options={[
+                ['system-ui, sans-serif',                                        'System sans-serif'],
+                ["Georgia, 'Times New Roman', serif",                            'Georgia'],
+                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
+                ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
+                ["'Courier New', Courier, monospace",                            'Courier New'],
+              ]} current={eff.fontBody} />
+            </select>
+          </label>
+          <label style="margin-bottom:0.5rem">
+            Headings
+            <select name="fontHeading">
+              <FontOptions options={[
+                ['',                                                              'Same as body'],
+                ['system-ui, sans-serif',                                        'System sans-serif'],
+                ["Georgia, 'Times New Roman', serif",                            'Georgia'],
+                ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
+                ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
+              ]} current={eff.fontHeading} />
+            </select>
+          </label>
+          <label style="margin-bottom:1rem">
+            Code font
+            <select name="fontMono">
+              <FontOptions options={[
+                ["ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",  'System mono'],
+                ["'Courier New', Courier, monospace",                            'Courier New'],
+                ["'Fira Code', 'Fira Mono', 'DejaVu Sans Mono', monospace",      'Fira Code'],
+              ]} current={eff.fontMono} />
+            </select>
+          </label>
 
-          <section style="margin:0">
-            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.6rem">Typography</p>
-            <label style="margin-bottom:0.6rem">
-              Body
-              <select name="fontBody" style="margin-top:0.2rem">
-                <FontOptions options={[
-                  ['system-ui, sans-serif',                                        'System sans-serif'],
-                  ["Georgia, 'Times New Roman', serif",                            'Georgia'],
-                  ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
-                  ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
-                  ["'Courier New', Courier, monospace",                            'Courier New'],
-                ]} current={eff.fontBody} />
-              </select>
-            </label>
-            <label style="margin-bottom:0.6rem">
-              Headings
-              <select name="fontHeading" style="margin-top:0.2rem">
-                <FontOptions options={[
-                  ['',                                                              'Same as body'],
-                  ['system-ui, sans-serif',                                        'System sans-serif'],
-                  ["Georgia, 'Times New Roman', serif",                            'Georgia'],
-                  ["Palatino, 'Palatino Linotype', 'Book Antiqua', serif",         'Palatino'],
-                  ["Optima, Candara, 'Noto Sans', sans-serif",                     'Optima'],
-                ]} current={eff.fontHeading} />
-              </select>
-            </label>
-            <label style="margin-bottom:0">
-              Code
-              <select name="fontMono" style="margin-top:0.2rem">
-                <FontOptions options={[
-                  ["ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",  'System mono'],
-                  ["'Courier New', Courier, monospace",                            'Courier New'],
-                  ["'Fira Code', 'Fira Mono', 'DejaVu Sans Mono', monospace",      'Fira Code'],
-                ]} current={eff.fontMono} />
-              </select>
-            </label>
-          </section>
+          <button type="submit" style="width:100%">Save theme</button>
+        </form>
 
-          <section style="margin:0">
-            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.6rem">Colours</p>
-            <div style="display:flex;gap:1rem;margin-bottom:0.75rem">
-              <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
-                <input type="radio" name="colorScheme" value="light"
-                  checked={eff.colorScheme === 'light'} style="margin:0" /> Light
-              </label>
-              <label style="display:flex;align-items:center;gap:0.35rem;font-weight:normal;font-size:0.8rem;margin:0">
-                <input type="radio" name="colorScheme" value="dark"
-                  checked={eff.colorScheme === 'dark'} style="margin:0" /> Dark
-              </label>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-              {colorInput('colorAccent', 'Accent', eff.colorAccent)}
-              {colorInput('colorBg', 'Background', eff.colorBg)}
-              {colorInput('colorText', 'Text', eff.colorText)}
-              {colorInput('colorMuted', 'Muted', eff.colorMuted)}
-            </div>
-          </section>
-
-          <section style="margin:0">
-            <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.5rem">Preview</p>
-            <div style="padding:1rem 1.25rem;border:1px solid var(--g-border);border-radius:4px;font-size:0.85rem;height:100%">
-              <p style="font-size:1.1rem;font-weight:700;margin-bottom:0.35rem">The quick brown fox</p>
-              <p style="margin-bottom:0.35rem">Body text with a <a href="#">hyperlink</a>, <strong>bold</strong> and <em>italic</em>.</p>
-              <p style="margin-bottom:0.35rem"><code>const grip = "sovereign";</code></p>
-              <p style="color:var(--g-text-muted);font-size:0.8rem;margin-bottom:0.5rem">A muted caption.</p>
-              <button type="button" style="margin:0;padding:0.2rem 0.65rem;font-size:0.78rem">Button</button>
-            </div>
-          </section>
-
+        {/* ── Right: kitchen sink ── */}
+        <div style="border:1px solid var(--g-border);border-radius:6px;padding:1.5rem;min-height:60vh;overflow:auto">
+          <KitchenSink />
         </div>
 
-      </form>
+      </div>
 
       <script>{themeScript}</script>
     </div>
@@ -396,7 +550,7 @@ export function handleThemeChange(
     colorAccent?: string; colorBg?: string; colorText?: string; colorMuted?: string;
   }
 ): void {
-  const validThemes: ThemeName[] = ['literary', 'ink', 'coder', 'cyberpunk', 'light', 'dark'];
+  const validThemes: ThemeName[] = ['literary', 'ink', 'coder', 'cyberpunk'];
   const theme = validThemes.includes(body.theme as ThemeName) ? (body.theme as ThemeName) : 'literary';
   db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('theme', theme);
 

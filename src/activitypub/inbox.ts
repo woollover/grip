@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import type { ApConfig } from './config';
 import { verifyInboundSignature, signRequest, signGetRequest, isSafeApUrl } from './signatures';
+import { log } from '../core/logger';
 import { buildAcceptActivity, buildNote, buildCreateActivity } from './objects';
 import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
@@ -18,7 +19,7 @@ export async function handleInbox(
     const ownKeyId = `${cfg.actorUrl}#main-key`;
     actorUri = await verifyInboundSignature(request, ownKeyId, privateKey);
   } catch (err) {
-    console.error('[activitypub] Signature verification failed:', err);
+    log.error('[activitypub] Signature verification failed:', err);
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -73,7 +74,7 @@ async function handleFollow(
 ): Promise<void> {
   // Validate actor URL before fetching
   if (!isSafeApUrl(actorUri)) {
-    console.error('[activitypub] Unsafe actor URL in Follow:', actorUri);
+    log.error('[activitypub] Unsafe actor URL in Follow:', actorUri);
     return;
   }
 
@@ -97,7 +98,7 @@ async function handleFollow(
     inboxUrl = actor.inbox;
     if (!inboxUrl || !isSafeApUrl(inboxUrl)) throw new Error('Missing or unsafe inbox URL');
   } catch (err) {
-    console.error('[activitypub] Failed to fetch follower actor:', err);
+    log.error('[activitypub] Failed to fetch follower actor:', err);
     return;
   }
 
@@ -131,15 +132,15 @@ async function handleFollow(
     });
 
     fetch(url.toString(), { method: 'POST', headers, body }).catch((err) => {
-      console.error('[activitypub] Failed to deliver Accept:', err);
+      log.error('[activitypub] Failed to deliver Accept:', err);
     });
   } catch (err) {
-    console.error('[activitypub] Failed to sign Accept:', err);
+    log.error('[activitypub] Failed to sign Accept:', err);
   }
 
   // Backfill recent posts to the new follower
   deliverBackfill(db, cfg, inboxUrl).catch((err) => {
-    console.error('[activitypub] Backfill failed:', err);
+    log.error('[activitypub] Backfill failed:', err);
   });
 }
 

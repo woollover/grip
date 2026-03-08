@@ -14,6 +14,7 @@ import type { ApConfig } from '../activitypub/config';
 import { isSafeApUrl, signGetRequest, signRequest } from '../activitypub/signatures';
 import { getKeyPair } from '../activitypub/keys';
 import { ulid } from 'ulidx';
+import { log } from '../core/logger';
 
 const TIMEOUT_MS = 10_000;
 
@@ -219,7 +220,7 @@ export async function sendFollowActivity(
     throw new Error(`Follow delivery failed: ${res.status}`);
   }
   if (!res.ok && res.status >= 500) {
-    console.warn(`[reader] Follow delivery got ${res.status} (transient), follow stored as pending`);
+    log.warn(`[reader] Follow delivery got ${res.status} (transient), follow stored as pending`);
   }
 }
 
@@ -264,7 +265,7 @@ export async function sendUnfollowActivity(
     headers,
     body,
     signal: AbortSignal.timeout(10_000),
-  }).catch(err => console.error('[reader/ap] Unfollow delivery failed:', err));
+  }).catch(err => log.error('[reader/ap] Unfollow delivery failed:', err));
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────

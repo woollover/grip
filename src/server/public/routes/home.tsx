@@ -11,17 +11,23 @@ interface MicroPost {
 }
 
 export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
-  const articles = db.prepare(`
+  const get = (key: string, def: string) =>
+    (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)?.value ?? def;
+  const isPrivate = get('publicity_mode', 'public') === 'private';
+  const showArticles = !isPrivate && get('show_articles', '1') === '1';
+  const showMicro    = !isPrivate && get('show_micro',    '1') === '1';
+
+  const articles = showArticles ? db.prepare(`
     SELECT slug, title, published_at
     FROM articles WHERE status = 'published'
     ORDER BY published_at DESC LIMIT 8
-  `).all() as Article[];
+  `).all() as Article[] : [];
 
-  const microPosts = db.prepare(`
+  const microPosts = showMicro ? db.prepare(`
     SELECT id, body_html, created_at
     FROM micro_posts WHERE status = 'active'
     ORDER BY created_at DESC LIMIT 5
-  `).all() as MicroPost[];
+  `).all() as MicroPost[] : [];
 
   const content = (
     <div>

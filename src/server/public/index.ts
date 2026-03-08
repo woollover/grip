@@ -29,6 +29,17 @@ function getSiteConfig(db: Database): {
   };
 }
 
+function getPublicityConfig(db: Database) {
+  const get = (key: string, fallback: string) =>
+    (db.prepare("SELECT value FROM config WHERE key = ?").get(key) as { value: string } | null)?.value ?? fallback;
+  const isPrivate = get("publicity_mode", "public") === "private";
+  return {
+    showArticles: !isPrivate && get("show_articles", "1") === "1",
+    showMicro:    !isPrivate && get("show_micro",    "1") === "1",
+    rssEnabled:   !isPrivate && get("rss_enabled",   "1") === "1",
+  };
+}
+
 const SECURITY_HEADERS = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
@@ -75,6 +86,7 @@ export function createPublicApp(
 
   app.get("/articles", ({ query }) => {
     const { title } = getSiteConfig(db);
+    if (!getPublicityConfig(db).showArticles) return notFound(title);
     const tag = query.tag as string | undefined;
     const page = Math.max(1, parseInt(query.page as string) || 1);
     return html(renderArticlesList(db, title, tag, page));
@@ -82,6 +94,7 @@ export function createPublicApp(
 
   app.get("/articles/:slug", ({ params }) => {
     const { title } = getSiteConfig(db);
+    if (!getPublicityConfig(db).showArticles) return notFound(title);
     const page = renderArticle(db, params.slug, title);
     if (!page) return notFound(title);
     return html(page);
@@ -89,6 +102,7 @@ export function createPublicApp(
 
   app.get("/micro", ({ query }) => {
     const { title } = getSiteConfig(db);
+    if (!getPublicityConfig(db).showMicro) return notFound(title);
     const page = Math.max(1, parseInt(query.page as string) || 1);
     return html(renderMicroList(db, title, apCfg, page));
   });
@@ -110,16 +124,21 @@ export function createPublicApp(
 
   app.get("/rss.xml", () => {
     const { title, description, domain } = getSiteConfig(db);
+    if (!getPublicityConfig(db).rssEnabled) return notFound(title);
     return new Response(renderRssAll(db, domain, title, description), { headers: rssHeaders });
   });
 
   app.get("/articles/rss.xml", () => {
     const { title, description, domain } = getSiteConfig(db);
+    const pub = getPublicityConfig(db);
+    if (!pub.rssEnabled || !pub.showArticles) return notFound(title);
     return new Response(renderRssArticles(db, domain, title, description), { headers: rssHeaders });
   });
 
   app.get("/micro/rss.xml", () => {
     const { title, description, domain } = getSiteConfig(db);
+    const pub = getPublicityConfig(db);
+    if (!pub.rssEnabled || !pub.showMicro) return notFound(title);
     return new Response(renderRssMicro(db, domain, title, description), { headers: rssHeaders });
   });
 

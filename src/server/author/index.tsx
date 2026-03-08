@@ -49,6 +49,7 @@ import {
   renderThemeSettings,
   handleSiteConfigUpdate,
   handleThemeChange,
+  handlePublicityUpdate,
 } from "./routes/settings";
 import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
 import {
@@ -58,6 +59,7 @@ import {
 } from "./routes/reader";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
+import { log } from "../../core/logger";
 import { version as currentVersion } from "../../../package.json";
 import { execSync } from "child_process";
 import path from "path";
@@ -262,7 +264,7 @@ export function createAuthorApp(
       } | null;
       if (latest) {
         deliverNewPost(db, apCfg, latest).catch((err) => {
-          console.error("[activitypub] Delivery error:", err);
+          log.error("[activitypub] Delivery error:", err);
         });
       }
     }
@@ -392,6 +394,16 @@ export function createAuthorApp(
     });
   });
 
+  app.post("/settings/publicity", ({ body, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    handlePublicityUpdate(db, body as any);
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/settings" },
+    });
+  });
+
   // ── ActivityPub author views ────────────────────────────────────────────────
   if (apCfg) {
     app.get("/contacts", ({ cookie, query }) => {
@@ -505,7 +517,7 @@ export function createAuthorApp(
     try {
       await handleRssSubscribe(db, url);
     } catch (err) {
-      console.error('[reader] RSS subscribe failed:', err);
+      log.error('[reader] RSS subscribe failed:', err);
     }
     return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
   });
@@ -516,7 +528,7 @@ export function createAuthorApp(
     try {
       await handleRssRefresh(db, params.id);
     } catch (err) {
-      console.error('[reader] RSS refresh failed:', err);
+      log.error('[reader] RSS refresh failed:', err);
     }
     return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
   });
@@ -541,7 +553,7 @@ export function createAuthorApp(
     try {
       await handleApFollow(db, actor, apCfg ?? null);
     } catch (err) {
-      console.error('[reader] AP follow failed:', err);
+      log.error('[reader] AP follow failed:', err);
     }
     return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
   });
@@ -552,7 +564,7 @@ export function createAuthorApp(
     try {
       await handleApRefreshById(db, params.id, apCfg ?? null);
     } catch (err) {
-      console.error('[reader] AP refresh failed:', err);
+      log.error('[reader] AP refresh failed:', err);
     }
     return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
   });

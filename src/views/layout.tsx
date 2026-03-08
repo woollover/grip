@@ -9,28 +9,49 @@ export interface LayoutOptions {
   activeTag?: string;
 }
 
+// ── Publicity config ───────────────────────────────────────────────────────────
+
+interface PublicityConfig {
+  showArticles: boolean;
+  showMicro: boolean;
+  rssEnabled: boolean;
+}
+
+function readPublicity(db: Database): PublicityConfig {
+  const get = (key: string, fallback: string) =>
+    (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)?.value ?? fallback;
+  const isPrivate = get('publicity_mode', 'public') === 'private';
+  return {
+    showArticles: !isPrivate && get('show_articles', '1') === '1',
+    showMicro:    !isPrivate && get('show_micro',    '1') === '1',
+    rssEnabled:   !isPrivate && get('rss_enabled',   '1') === '1',
+  };
+}
+
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
-function buildSidebar(db: Database, activeTag?: string): JSX.Element {
+function buildSidebar(db: Database, pub: PublicityConfig, activeTag?: string): JSX.Element {
   const desc = db.prepare(
     "SELECT value FROM config WHERE key = 'site_description'"
   ).get() as { value: string } | null;
 
-  const recent = db.prepare(`
+  const recent = pub.showArticles ? db.prepare(`
     SELECT title, slug FROM articles
     WHERE status = 'published'
     ORDER BY published_at DESC LIMIT 6
-  `).all() as { title: string; slug: string }[];
+  `).all() as { title: string; slug: string }[] : [];
 
-  const tagRows = db.prepare(
-    "SELECT tags FROM articles WHERE status = 'published' AND tags != '[]'"
-  ).all() as { tags: string }[];
-
-  const tagSet = new Set<string>();
-  for (const row of tagRows) {
-    try { (JSON.parse(row.tags) as string[]).forEach(t => tagSet.add(t)); } catch {}
+  const tags: string[] = [];
+  if (pub.showArticles) {
+    const tagRows = db.prepare(
+      "SELECT tags FROM articles WHERE status = 'published' AND tags != '[]'"
+    ).all() as { tags: string }[];
+    const tagSet = new Set<string>();
+    for (const row of tagRows) {
+      try { (JSON.parse(row.tags) as string[]).forEach(t => tagSet.add(t)); } catch {}
+    }
+    tags.push(...[...tagSet].sort());
   }
-  const tags = [...tagSet].sort();
 
   return (
     <aside class="sidebar">
@@ -70,7 +91,8 @@ function buildSidebar(db: Database, activeTag?: string): JSX.Element {
 export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Element {
   const { title, description = '', siteTitle = 'GRIP', db, activeTag } = opts;
   const scheme = db ? getColorScheme(db) : 'light';
-  const sidebar = db ? buildSidebar(db, activeTag) : null;
+  const pub = db ? readPublicity(db) : { showArticles: true, showMicro: true, rssEnabled: true };
+  const sidebar = db ? buildSidebar(db, pub, activeTag) : null;
 
   const navPages = db ? (db.prepare(
     "SELECT title, slug FROM pages WHERE status = 'published' ORDER BY title ASC"
@@ -95,8 +117,8 @@ export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Ele
               <li><strong><a href="/">{siteTitle}</a></strong></li>
             </ul>
             <ul>
-              <li><a href="/articles">Articles</a></li>
-              <li><a href="/micro">Notes</a></li>
+              {pub.showArticles && <li><a href="/articles">Articles</a></li>}
+              {pub.showMicro && <li><a href="/micro">Notes</a></li>}
               {navPages.map(p => <li><a href={`/pages/${p.slug}`}>{p.title}</a></li>)}
             </ul>
           </nav>
@@ -108,9 +130,13 @@ export function publicLayout(opts: LayoutOptions, content: JSX.Element): JSX.Ele
         </div>
 
         <footer class="site-footer container">
-          <a href="/rss.xml">RSS</a>{' · '}
-          <a href="/articles/rss.xml">Articles</a>{' · '}
-          <a href="/micro/rss.xml">Notes</a>
+          {pub.rssEnabled && (
+            <>
+              <a href="/rss.xml">RSS</a>{' · '}
+              {pub.showArticles && <><a href="/articles/rss.xml">Articles</a>{' · '}</>}
+              {pub.showMicro && <a href="/micro/rss.xml">Notes</a>}
+            </>
+          )}
         </footer>
       </body>
     </html>

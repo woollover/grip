@@ -6,18 +6,21 @@ import { createPublicApp } from './server/public/index';
 import { loadApConfig } from './activitypub/config';
 import { ensureKeyPair } from './activitypub/keys';
 import { existsSync } from 'fs';
+import { log } from './core/logger';
+import type { LogLevel } from './core/logger';
 
 interface GripConfig {
   server: { public_port: number; author_port: number; domain: string };
   data: { db_path: string; media_path: string };
   site: { title: string; description: string };
   activitypub?: { enabled: boolean; username: string; accept_replies: boolean };
+  logging?: { level?: LogLevel; log_file?: string };
 }
 
 async function loadConfig(): Promise<{ config: GripConfig; rawToml: any }> {
   const tomlPath = `${process.cwd()}/grip.toml`;
   if (!existsSync(tomlPath)) {
-    console.warn('grip.toml not found — using defaults. Run: bun run src/cli/index.ts setup');
+    log.warn('grip.toml not found — using defaults. Run: bun run src/cli/index.ts setup');
     return {
       config: {
         server: { public_port: 3000, author_port: 4000, domain: 'localhost' },
@@ -44,6 +47,7 @@ async function loadConfig(): Promise<{ config: GripConfig; rawToml: any }> {
         title: toml.site?.title ?? 'My GRIP',
         description: toml.site?.description ?? '',
       },
+      logging: toml.logging ?? undefined,
     },
     rawToml: toml,
   };
@@ -52,13 +56,21 @@ async function loadConfig(): Promise<{ config: GripConfig; rawToml: any }> {
 export async function main(): Promise<void> {
   const { config, rawToml } = await loadConfig();
 
+  // Configure logger from grip.toml [logging] section
+  if (config.logging?.level) {
+    log.setLevel(config.logging.level);
+  }
+  if (config.logging?.log_file) {
+    log.initFile(config.logging.log_file);
+  }
+
   // Init DB and rebuild projections synchronously before binding ports
   const db = getDb(config.data.db_path);
   const store = new EventStore(db);
   const allEvents = store.all();
-  console.log(`Replaying ${allEvents.length} events to rebuild projections…`);
+  log.info(`Replaying ${allEvents.length} events to rebuild projections…`);
   rebuild(db, allEvents);
-  console.log('Projections ready.');
+  log.info('Projections ready.');
 
   // ActivityPub (opt-in)
   const apCfg = loadApConfig(rawToml, config.server.domain);
@@ -66,7 +78,7 @@ export async function main(): Promise<void> {
     await ensureKeyPair(db);
     db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_enabled', '1');
     db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_username', apCfg.username);
-    console.log(`ActivityPub enabled as @${apCfg.username}@${apCfg.domain}`);
+    log.info(`ActivityPub enabled as @${apCfg.username}@${apCfg.domain}`);
   } else {
     db.prepare('DELETE FROM config WHERE key = ?').run('ap_enabled');
   }
@@ -78,13 +90,13 @@ export async function main(): Promise<void> {
   publicApp.listen(config.server.public_port);
   authorApp.listen(config.server.author_port);
 
-  console.log(`\nGRIP running`);
-  console.log(`  Public:  http://localhost:${config.server.public_port}`);
-  console.log(`  Author:  http://localhost:${config.server.author_port}`);
+  log.info(`\nGRIP running`);
+  log.info(`  Public:  http://localhost:${config.server.public_port}`);
+  log.info(`  Author:  http://localhost:${config.server.author_port}`);
 }
 
 // Run when invoked directly
 main().catch((err) => {
-  console.error('Failed to start GRIP:', err);
+  log.error('Failed to start GRIP:', err);
   process.exit(1);
 });

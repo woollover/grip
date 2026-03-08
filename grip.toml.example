@@ -31,3 +31,11 @@ description  = "A personal publishing space"
 # enabled        = true
 # username       = "me"          # your handle will be @me@yourdomain.com
 # accept_replies = false         # set to true to collect fediverse replies as comments
+
+# [logging]
+# Minimum log level to emit. One of: debug, info, warn, error. Default: info
+# level    = "info"
+#
+# Optional file to append logs to. Omit (or comment out) to log to console only.
+# The directory will be created automatically if it does not exist.
+# log_file = "./logs/grip.log"

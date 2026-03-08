@@ -80,24 +80,28 @@ export async function setup(_args: string[]): Promise<void> {
   }
 
   const defaults = {
-    title:          existing.site?.title              ?? 'My GRIP',
-    description:    existing.site?.description        ?? 'A personal publishing space',
-    domain:         existing.server?.domain           ?? 'localhost',
-    publicPort:     String(existing.server?.public_port  ?? 3000),
-    authorPort:     String(existing.server?.author_port  ?? 4000),
-    apEnabled:      existing.activitypub?.enabled     ?? false,
-    apUsername:     existing.activitypub?.username    ?? 'me',
-    apAcceptReplies: existing.activitypub?.accept_replies ?? false,
+    title:           existing.site?.title                    ?? 'My GRIP',
+    description:     existing.site?.description              ?? 'A personal publishing space',
+    domain:          existing.server?.domain                 ?? 'localhost',
+    publicPort:      String(existing.server?.public_port     ?? 3000),
+    authorPort:      String(existing.server?.author_port     ?? 4000),
+    publicityMode:   existing.publicity?.mode                ?? 'public',
+    showArticles:    existing.publicity?.show_articles       ?? true,
+    showMicro:       existing.publicity?.show_micro          ?? true,
+    rssEnabled:      existing.publicity?.rss_enabled         ?? true,
+    apEnabled:       existing.activitypub?.enabled           ?? false,
+    apUsername:      existing.activitypub?.username          ?? 'me',
+    apAcceptReplies: existing.activitypub?.accept_replies    ?? false,
   };
 
   // ── Step 1: Site identity ─────────────────────────────────────────────────
-  stepHeader(1, 5, 'Site identity');
+  stepHeader(1, 6, 'Site identity');
   const title       = prompt('Site title',       defaults.title);
   const description = prompt('Description',      defaults.description);
   const domain      = prompt('Domain',           defaults.domain);
 
   // ── Step 2: Server ports ─────────────────────────────────────────────────
-  stepHeader(2, 5, 'Server ports');
+  stepHeader(2, 6, 'Server ports');
   p(style('  Public port  — your visitor-facing site.', c.dim));
   p(style('  Author port  — your private writing interface.', c.dim));
   p();
@@ -105,7 +109,7 @@ export async function setup(_args: string[]): Promise<void> {
   const authorPort = parseInt(prompt('Author port', defaults.authorPort), 10) || 4000;
 
   // ── Step 3: Passphrase ────────────────────────────────────────────────────
-  stepHeader(3, 5, 'Passphrase');
+  stepHeader(3, 6, 'Passphrase');
   p(style('  Protects the author interface. Min 8 characters.', c.dim));
   p();
 
@@ -127,8 +131,30 @@ export async function setup(_args: string[]): Promise<void> {
     break;
   }
 
-  // ── Step 4: ActivityPub ───────────────────────────────────────────────────
-  stepHeader(4, 5, 'ActivityPub (fediverse)');
+  // ── Step 4: Publicity ─────────────────────────────────────────────────────
+  stepHeader(4, 6, 'Publicity');
+  p(style('  Control what visitors can see on your public site.', c.dim));
+  p();
+
+  const isPrivate = !confirm('Make site public?', defaults.publicityMode !== 'private');
+  let showArticles = defaults.showArticles as boolean;
+  let showMicro    = defaults.showMicro    as boolean;
+  let rssEnabled   = defaults.rssEnabled   as boolean;
+
+  if (!isPrivate) {
+    p();
+    showArticles = confirm('Show articles?',    showArticles);
+    showMicro    = confirm('Show micro posts?', showMicro);
+    rssEnabled   = confirm('Enable RSS feeds?', rssEnabled);
+  } else {
+    p(style('  Only published pages will be visible to visitors.', c.dim));
+    showArticles = false;
+    showMicro    = false;
+    rssEnabled   = false;
+  }
+
+  // ── Step 5: ActivityPub ───────────────────────────────────────────────────
+  stepHeader(5, 6, 'ActivityPub (fediverse)');
   p(style('  Make your micro-posts followable from Mastodon and the fediverse.', c.dim));
   p(style('  You can enable this later by editing grip.toml.', c.dim));
   p();
@@ -149,13 +175,14 @@ export async function setup(_args: string[]): Promise<void> {
     }
   }
 
-  // ── Step 5: Review & confirm ─────────────────────────────────────────────
-  stepHeader(5, 5, 'Review & confirm');
+  // ── Step 6: Review & confirm ─────────────────────────────────────────────
+  stepHeader(6, 6, 'Review & confirm');
   p(`  ${style('Site title ', c.dim)}   ${style(title, c.bold)}`);
   p(`  ${style('Description', c.dim)}   ${description}`);
   p(`  ${style('Domain     ', c.dim)}   ${domain}`);
   p(`  ${style('Public port', c.dim)}   :${publicPort}`);
   p(`  ${style('Author port', c.dim)}   :${authorPort}`);
+  p(`  ${style('Publicity  ', c.dim)}   ${isPrivate ? 'Private (pages only)' : `Public${showArticles ? ', articles' : ''}${showMicro ? ', micro' : ''}${rssEnabled ? ', RSS' : ''}`}`);
   if (apEnabled) {
     p(`  ${style('ActivityPub', c.dim)}   @${apUsername}@${domain}${apAcceptReplies ? ' (replies on)' : ''}`);
   }
@@ -196,10 +223,16 @@ ${apSection}`;
   p('  ' + style('✓', c.green) + '  Database initialised');
 
   const hash = hashSync(passphrase, 12);
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('passphrase_hash', hash);
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('site_title', title);
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('site_description', description);
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('domain', domain);
+  const set = (k: string, v: string) =>
+    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(k, v);
+  set('passphrase_hash',  hash);
+  set('site_title',       title);
+  set('site_description', description);
+  set('domain',           domain);
+  set('publicity_mode',   isPrivate ? 'private' : 'public');
+  set('show_articles',    showArticles ? '1' : '0');
+  set('show_micro',       showMicro    ? '1' : '0');
+  set('rss_enabled',      rssEnabled   ? '1' : '0');
   p('  ' + style('✓', c.green) + '  Config saved');
 
   if (apEnabled) {
