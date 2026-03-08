@@ -585,7 +585,7 @@ export function createAuthorApp(
         return html(<span>v{currentVersion} — up to date ✓</span>);
       }
       return html(
-        <span style="color:var(--pico-primary)">
+        <span style="color:var(--g-accent)">
           Update available: <strong safe>v{latest}</strong>
           {" "}
           <form method="POST" action="/update" style="display:inline;margin-left:0.25rem">

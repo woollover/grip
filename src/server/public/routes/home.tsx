@@ -58,7 +58,7 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
       )}
 
       {articles.length === 0 && microPosts.length === 0 && (
-        <p style="color:var(--pico-muted-color)">Nothing published yet.</p>
+        <p style="color:var(--g-text-muted)">Nothing published yet.</p>
       )}
     </div>
   );

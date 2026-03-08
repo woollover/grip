@@ -38,14 +38,14 @@ export function renderSettings(db: Database): JSX.Element {
       <div class="page-hd" style="margin-bottom:0.5rem">
         <h3 style="display:flex;align-items:center;gap:0.5rem">
           ActivityPub
-          <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--pico-primary);border:1px solid var(--pico-primary);border-radius:3px;padding:0.1rem 0.4rem">Active</span>
+          <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--g-accent);border:1px solid var(--g-accent);border-radius:3px;padding:0.1rem 0.4rem">Active</span>
         </h3>
         <a href="/contacts" role="button" class="outline secondary">Contacts →</a>
       </div>
-      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.4rem">
+      <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0 0 0.4rem">
         Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> · {ap.contacts} contact{ap.contacts !== 1 ? 's' : ''}
       </p>
-      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">
+      <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0">
         Managed via <code>grip.toml</code> — restart required to change settings.
       </p>
     </section>
@@ -54,11 +54,11 @@ export function renderSettings(db: Database): JSX.Element {
       <div class="page-hd" style="margin-bottom:0.5rem">
         <h3>ActivityPub</h3>
       </div>
-      <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.75rem">
+      <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0 0 0.75rem">
         Federate with Mastodon and the wider Fediverse. People can follow your notes from any ActivityPub server.
       </p>
       <p style="font-size:0.78rem;margin:0 0 0.4rem">To enable, add to <code>grip.toml</code> and restart:</p>
-      <pre style="font-size:0.75rem;margin:0;padding:0.65rem 0.85rem;border-radius:4px;background:var(--pico-code-background)">{`[activitypub]
+      <pre style="font-size:0.75rem;margin:0;padding:0.65rem 0.85rem;border-radius:4px;background:var(--g-code-bg)">{`[activitypub]
 enabled        = true
 username       = "you"
 accept_replies = true`}</pre>
@@ -102,7 +102,7 @@ accept_replies = true`}</pre>
               <h3>Theme</h3>
               <a href="/settings/theme" role="button" class="outline secondary">Customize →</a>
             </div>
-            <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
+            <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0">Fonts, colours, and visual style.</p>
           </section>
 
           <hr style="margin:0" />
@@ -122,10 +122,10 @@ accept_replies = true`}</pre>
                 hx-indicator="#update-result"
               >Check</button>
             </div>
-            <p style="color:var(--pico-muted-color);font-size:0.78rem;margin:0 0 0.5rem">
+            <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0 0 0.5rem">
               Current version: <code safe>v{currentVersion}</code>
             </p>
-            <p id="update-result" style="font-size:0.78rem;margin:0;color:var(--pico-muted-color)"></p>
+            <p id="update-result" style="font-size:0.78rem;margin:0;color:var(--g-text-muted)"></p>
           </section>
 
         </div>
@@ -182,12 +182,12 @@ export function renderThemeSettings(db: Database): JSX.Element {
   const PRESETS = ${JSON.stringify(PRESET_DEFAULTS)};
 
   const VAR_MAP = {
-    fontBody:    '--pico-font-family',
-    fontMono:    '--pico-font-family-monospace',
-    colorAccent: '--pico-primary',
-    colorBg:     '--pico-background-color',
-    colorText:   '--pico-color',
-    colorMuted:  '--pico-muted-color',
+    fontBody:    '--g-font-body',
+    fontMono:    '--g-font-mono',
+    colorAccent: '--g-accent',
+    colorBg:     '--g-bg',
+    colorText:   '--g-text',
+    colorMuted:  '--g-text-muted',
   };
 
   function applyLivePreview() {
@@ -350,11 +350,11 @@ export function renderThemeSettings(db: Database): JSX.Element {
 
           <section style="margin:0">
             <p style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:0.5rem">Preview</p>
-            <div style="padding:1rem 1.25rem;border:1px solid var(--pico-border-color);border-radius:4px;font-size:0.85rem;height:100%">
+            <div style="padding:1rem 1.25rem;border:1px solid var(--g-border);border-radius:4px;font-size:0.85rem;height:100%">
               <p style="font-size:1.1rem;font-weight:700;margin-bottom:0.35rem">The quick brown fox</p>
               <p style="margin-bottom:0.35rem">Body text with a <a href="#">hyperlink</a>, <strong>bold</strong> and <em>italic</em>.</p>
               <p style="margin-bottom:0.35rem"><code>const grip = "sovereign";</code></p>
-              <p style="color:var(--pico-muted-color);font-size:0.8rem;margin-bottom:0.5rem">A muted caption.</p>
+              <p style="color:var(--g-text-muted);font-size:0.8rem;margin-bottom:0.5rem">A muted caption.</p>
               <button type="button" style="margin:0;padding:0.2rem 0.65rem;font-size:0.78rem">Button</button>
             </div>
           </section>

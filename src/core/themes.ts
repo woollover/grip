@@ -1,4 +1,5 @@
-// GRIP theme presets — CSS variable overrides for PicoCSS v2
+// GRIP theme system — CSS token overrides for grip.css
+// Themes override --g-* semantic tokens. No PicoCSS dependency.
 
 function configVal(db: import('bun:sqlite').Database, key: string): string | null {
   const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null;
@@ -7,175 +8,119 @@ function configVal(db: import('bun:sqlite').Database, key: string): string | nul
 
 export type ThemeName = 'light' | 'dark' | 'coder' | 'cyberpunk' | 'literary' | 'ink';
 
+// Base theme CSS — each preset overrides the --g-* tokens defined in grip.css.
+// The :root block handles both light[data-theme] and dark[data-theme] specificity.
 export const THEMES: Record<ThemeName, string> = {
 
-  light: `/* GRIP — Light theme (PicoCSS default) */
+  light: `/* GRIP — Light (default) */
 :root { color-scheme: light; }
 `,
 
-  dark: `/* GRIP — Dark theme */
+  dark: `/* GRIP — Dark */
 :root { color-scheme: dark; }
-html[data-theme="dark"] {
-  --pico-background-color: #13171f;
-  --pico-card-background-color: #1c2030;
-  --pico-card-sectioning-background-color: #1c2030;
-}
+html { --g-bg: #1a1d23; --g-surface: #22262d; --g-surface-2: #2c3038;
+  --g-border: #373d47; --g-border-faint: rgba(100,112,130,.2);
+  --g-text: #ced4da; --g-text-muted: #868e96; --g-text-strong: #f1f3f5;
+  --g-accent: #74c0fc; --g-accent-hover: #a5d8ff; --g-accent-fg: #1a1d23;
+  --g-accent-muted: rgba(116,192,252,.12);
+  --g-code-bg: #2c3038; --g-code-text: #ff8787;
+  --g-danger: #ff6b6b; --g-success: #69db7c; }
 `,
 
-  coder: `/* GRIP — Coder theme — minimal dark, GitHub-palette */
-:root {
+  coder: `/* GRIP — Coder (GitHub dark) */
+html {
   color-scheme: dark;
-  --pico-background-color: #0d1117;
-  --pico-card-background-color: #0d1117;
-  --pico-card-sectioning-background-color: #161b22;
-  --pico-color: #e6edf3;
-  --pico-muted-color: #8b949e;
-  --pico-muted-border-color: #30363d;
-  --pico-border-color: #30363d;
-  --pico-h1-color: #e6edf3;
-  --pico-h2-color: #e6edf3;
-  --pico-h3-color: #e6edf3;
-  --pico-h4-color: #e6edf3;
-  --pico-h5-color: #e6edf3;
-  --pico-h6-color: #e6edf3;
-  --pico-primary: #58a6ff;
-  --pico-primary-background: #1f6feb;
-  --pico-primary-border: #58a6ff;
-  --pico-primary-underline: #58a6ff80;
-  --pico-primary-hover: #79c0ff;
-  --pico-primary-hover-background: #388bfd;
-  --pico-primary-hover-border: #79c0ff;
-  --pico-primary-focus: #58a6ff40;
-  --pico-primary-inverse: #0d1117;
-  --pico-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --pico-font-family-monospace: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
-  --pico-form-element-background-color: #161b22;
-  --pico-form-element-border-color: #30363d;
-  --pico-form-element-color: #e6edf3;
-  --pico-form-element-focus-color: #58a6ff;
-  --pico-table-border-color: #30363d;
-  --pico-table-row-stripped-background-color: #161b22;
-}
-/* Links */
-a { color: #58a6ff; }
-a:hover { color: #79c0ff; text-decoration: underline; }
-/* Code blocks */
-pre {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-left: 3px solid #58a6ff;
-  border-radius: 6px;
-  padding: 1.25rem 1.5rem;
-  overflow-x: auto;
-  font-size: 0.875rem;
-  line-height: 1.65;
-}
-pre code {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: inherit;
-  color: inherit;
-}
-code:not(pre code) {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 0.15em 0.45em;
-  font-size: 0.875em;
-  color: #e6edf3;
+  --g-bg:           #0d1117;
+  --g-surface:      #161b22;
+  --g-surface-2:    #21262d;
+  --g-border:       #30363d;
+  --g-border-faint: rgba(48,54,61,.5);
+  --g-text:         #e6edf3;
+  --g-text-muted:   #8b949e;
+  --g-text-strong:  #f0f6fc;
+  --g-accent:       #58a6ff;
+  --g-accent-hover: #79c0ff;
+  --g-accent-fg:    #0d1117;
+  --g-accent-muted: rgba(88,166,255,.12);
+  --g-code-bg:      #161b22;
+  --g-code-text:    #79c0ff;
+  --g-font-body:    system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --g-font-mono:    'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
 }
 `,
 
-  cyberpunk: `/* GRIP — Cyberpunk theme */
-:root {
+  cyberpunk: `/* GRIP — Cyberpunk */
+html {
   color-scheme: dark;
-  --pico-font-family: 'Courier New', 'Lucida Console', monospace;
-  --pico-background-color: #0a0a12;
-  --pico-card-background-color: #12121e;
-  --pico-card-sectioning-background-color: #1a1a2e;
-  --pico-color: #c8c8e8;
-  --pico-muted-color: #6868a0;
-  --pico-muted-border-color: #2a2a40;
-  --pico-border-color: #2a2a40;
-  --pico-primary: #00ff88;
-  --pico-primary-background: #00cc6e;
-  --pico-primary-border: #00ff88;
-  --pico-primary-underline: rgba(0,255,136,0.5);
-  --pico-primary-hover: #00ff88;
-  --pico-primary-hover-background: #00ee7a;
-  --pico-primary-focus: rgba(0,255,136,0.3);
-  --pico-primary-inverse: #0a0a12;
-  --pico-secondary: #ff00aa;
-  --pico-secondary-hover: #ff33bb;
-  --pico-secondary-focus: rgba(255,0,170,0.3);
-  --pico-secondary-inverse: #0a0a12;
-  --pico-h1-color: #00ff88;
-  --pico-h2-color: #00d4ff;
-  --pico-h3-color: #ff00aa;
-  --pico-h4-color: #c8c8e8;
-  --pico-ins-color: #00ff88;
-  --pico-del-color: #ff3366;
-  --pico-code-color: #ff00aa;
-  --pico-code-background-color: #1a1a2e;
-  --pico-form-element-background-color: #12121e;
-  --pico-form-element-border-color: #3a3a5e;
-  --pico-form-element-color: #c8c8e8;
-  --pico-form-element-focus-color: #00ff88;
-  --pico-table-border-color: #2a2a40;
-  --pico-table-row-stripped-background-color: #1a1a2e;
+  --g-bg:           #0a0a12;
+  --g-surface:      #12121e;
+  --g-surface-2:    #1a1a2e;
+  --g-border:       #2a2a40;
+  --g-border-faint: rgba(42,42,64,.5);
+  --g-text:         #c8c8e8;
+  --g-text-muted:   #6868a0;
+  --g-text-strong:  #e0e0f8;
+  --g-accent:       #00ff88;
+  --g-accent-hover: #33ffaa;
+  --g-accent-fg:    #0a0a12;
+  --g-accent-muted: rgba(0,255,136,.1);
+  --g-code-bg:      #1a1a2e;
+  --g-code-text:    #ff00aa;
+  --g-font-body:    'Courier New', 'Lucida Console', monospace;
+  --g-font-heading: 'Courier New', 'Lucida Console', monospace;
+  --g-font-mono:    'Courier New', 'Lucida Console', monospace;
 }
-a { color: #00d4ff; }
-a:hover { color: #00ff88; }
 `,
 
-  literary: `/* GRIP — Literary theme */
-:root {
+  literary: `/* GRIP — Literary (warm serif) */
+html {
   color-scheme: light;
-  --pico-background-color: #faf8f3;
-  --pico-card-background-color: #faf8f3;
-  --pico-color: #2c2a24;
-  --pico-muted-color: #9a9080;
-  --pico-muted-border-color: #9a908059;
-  --pico-border-color: #9a908059;
-  --pico-primary: #8b5e3c;
-  --pico-primary-background: #8b5e3c;
-  --pico-primary-border: #8b5e3c;
-  --pico-primary-underline: #8b5e3c80;
-  --pico-primary-hover: #7a5234;
-  --pico-primary-hover-background: #7a5234;
-  --pico-primary-focus: #8b5e3c40;
-  --pico-primary-inverse: #fff;
-  --pico-font-family: Palatino, 'Palatino Linotype', 'Book Antiqua', serif;
-  --pico-font-family-monospace: 'Courier New', Courier, monospace;
+  --g-bg:           #faf8f3;
+  --g-surface:      #f3f0e8;
+  --g-surface-2:    #ece8dc;
+  --g-border:       rgba(154,144,128,.35);
+  --g-border-faint: rgba(154,144,128,.18);
+  --g-text:         #2c2a24;
+  --g-text-muted:   #9a9080;
+  --g-text-strong:  #1a1814;
+  --g-accent:       #8b5e3c;
+  --g-accent-hover: #7a5234;
+  --g-accent-fg:    #fff;
+  --g-accent-muted: rgba(139,94,60,.1);
+  --g-code-bg:      #ece8dc;
+  --g-code-text:    #6b4226;
+  --g-font-body:    Palatino, 'Palatino Linotype', 'Book Antiqua', serif;
+  --g-font-heading: Optima, Candara, 'Noto Sans', sans-serif;
+  --g-font-mono:    'Courier New', Courier, monospace;
+  --g-lh:           1.85;
 }
-h1,h2,h3,h4,h5,h6 { font-family: Optima, Candara, 'Noto Sans', sans-serif; }
 `,
 
-  ink: `/* GRIP — Ink theme */
-:root {
+  ink: `/* GRIP — Ink (editorial black & white) */
+html {
   color-scheme: light;
-  --pico-background-color: #ffffff;
-  --pico-card-background-color: #ffffff;
-  --pico-color: #111111;
-  --pico-muted-color: #666666;
-  --pico-muted-border-color: #66666659;
-  --pico-border-color: #66666659;
-  --pico-primary: #1a3a6e;
-  --pico-primary-background: #1a3a6e;
-  --pico-primary-border: #1a3a6e;
-  --pico-primary-underline: #1a3a6e80;
-  --pico-primary-hover: #142d57;
-  --pico-primary-hover-background: #142d57;
-  --pico-primary-focus: #1a3a6e40;
-  --pico-primary-inverse: #fff;
-  --pico-font-family: Georgia, 'Times New Roman', serif;
-  --pico-font-family-monospace: 'Courier New', Courier, monospace;
+  --g-bg:           #ffffff;
+  --g-surface:      #f8f9fa;
+  --g-surface-2:    #f1f3f5;
+  --g-border:       rgba(102,102,102,.3);
+  --g-border-faint: rgba(102,102,102,.15);
+  --g-text:         #111111;
+  --g-text-muted:   #666666;
+  --g-text-strong:  #000000;
+  --g-accent:       #1a3a6e;
+  --g-accent-hover: #142d57;
+  --g-accent-fg:    #fff;
+  --g-accent-muted: rgba(26,58,110,.08);
+  --g-code-bg:      #f1f3f5;
+  --g-code-text:    #1a3a6e;
+  --g-font-body:    Georgia, 'Times New Roman', serif;
+  --g-font-mono:    'Courier New', Courier, monospace;
+  --g-lh:           1.8;
 }
 `,
 };
 
-// ── Custom overrides ──────────────────────────────────────────────────────────
+// ── Custom overrides ───────────────────────────────────────────────────────────
 
 export interface ThemeCustom {
   colorScheme?: 'light' | 'dark';
@@ -190,9 +135,29 @@ export interface ThemeCustom {
 
 // Default field values for the theme editor form, per preset.
 export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
+  light: {
+    colorScheme: 'light',
+    fontBody:    'system-ui, -apple-system, sans-serif',
+    fontHeading: '',
+    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
+    colorAccent: '#1971c2',
+    colorBg:     '#ffffff',
+    colorText:   '#343a40',
+    colorMuted:  '#868e96',
+  },
+  dark: {
+    colorScheme: 'dark',
+    fontBody:    'system-ui, -apple-system, sans-serif',
+    fontHeading: '',
+    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
+    colorAccent: '#74c0fc',
+    colorBg:     '#1a1d23',
+    colorText:   '#ced4da',
+    colorMuted:  '#868e96',
+  },
   coder: {
     colorScheme: 'dark',
-    fontBody:    'system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif',
+    fontBody:    "system-ui, -apple-system, 'Segoe UI', sans-serif",
     fontHeading: '',
     fontMono:    "'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace",
     colorAccent: '#58a6ff',
@@ -200,30 +165,10 @@ export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
     colorText:   '#e6edf3',
     colorMuted:  '#8b949e',
   },
-  light: {
-    colorScheme: 'light',
-    fontBody:    'system-ui, sans-serif',
-    fontHeading: '',
-    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
-    colorAccent: '#1095c1',
-    colorBg:     '#ffffff',
-    colorText:   '#373c3f',
-    colorMuted:  '#767b7e',
-  },
-  dark: {
-    colorScheme: 'dark',
-    fontBody:    'system-ui, sans-serif',
-    fontHeading: '',
-    fontMono:    "ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace",
-    colorAccent: '#1095c1',
-    colorBg:     '#13171f',
-    colorText:   '#c0c8d0',
-    colorMuted:  '#767b8a',
-  },
   cyberpunk: {
     colorScheme: 'dark',
     fontBody:    "'Courier New', Courier, monospace",
-    fontHeading: '',
+    fontHeading: "'Courier New', Courier, monospace",
     fontMono:    "'Courier New', Courier, monospace",
     colorAccent: '#00ff88',
     colorBg:     '#0a0a12',
@@ -256,64 +201,40 @@ export function buildOverrideCss(custom: ThemeCustom): string {
   const lines: string[] = [];
 
   if (custom.colorScheme) lines.push(`  color-scheme: ${custom.colorScheme};`);
-  if (custom.fontBody)    lines.push(`  --pico-font-family: ${custom.fontBody};`);
-  if (custom.fontMono)    lines.push(`  --pico-font-family-monospace: ${custom.fontMono};`);
+  if (custom.fontBody)    lines.push(`  --g-font-body: ${custom.fontBody};`);
+  if (custom.fontMono)    lines.push(`  --g-font-mono: ${custom.fontMono};`);
+  if (custom.fontHeading) lines.push(`  --g-font-heading: ${custom.fontHeading};`);
 
-  // Accent colour — set the full Pico primary family so buttons & links look right
   if (custom.colorAccent) {
     const a = custom.colorAccent;
-    lines.push(`  --pico-primary: ${a};`);
-    lines.push(`  --pico-primary-background: ${a};`);
-    lines.push(`  --pico-primary-border: ${a};`);
-    lines.push(`  --pico-primary-underline: ${a}80;`);   // 50 % opacity
-    lines.push(`  --pico-primary-hover: ${a};`);
-    lines.push(`  --pico-primary-hover-background: ${a};`);
-    lines.push(`  --pico-primary-hover-border: ${a};`);
-    lines.push(`  --pico-primary-focus: ${a}40;`);       // 25 % opacity
-    lines.push(`  --pico-primary-inverse: #fff;`);
-    lines.push(`  --pico-form-element-focus-color: ${a};`);
+    lines.push(`  --g-accent: ${a};`);
+    lines.push(`  --g-accent-hover: color-mix(in srgb, ${a} 80%, black);`);
+    lines.push(`  --g-accent-muted: color-mix(in srgb, ${a} 12%, transparent);`);
+    // fg: white unless accent is very light
+    lines.push(`  --g-accent-fg: #ffffff;`);
   }
 
-  // Background — keep cards/dropdowns consistent with the page background
   if (custom.colorBg) {
     const bg = custom.colorBg;
-    lines.push(`  --pico-background-color: ${bg};`);
-    lines.push(`  --pico-card-background-color: ${bg};`);
-    lines.push(`  --pico-card-sectioning-background-color: ${bg};`);
-    lines.push(`  --pico-dropdown-background-color: ${bg};`);
-    lines.push(`  --pico-form-element-background-color: ${bg};`);
+    lines.push(`  --g-bg: ${bg};`);
+    lines.push(`  --g-surface: color-mix(in srgb, ${bg} 85%, ${custom.colorScheme === 'dark' ? 'white' : 'black'} 15%);`);
+    lines.push(`  --g-code-bg: color-mix(in srgb, ${bg} 80%, ${custom.colorScheme === 'dark' ? 'white' : 'black'} 20%);`);
   }
 
-  // Text colour — also apply to headings so they inherit the chosen colour
   if (custom.colorText) {
-    const t = custom.colorText;
-    lines.push(`  --pico-color: ${t};`);
-    lines.push(`  --pico-h1-color: ${t};`);
-    lines.push(`  --pico-h2-color: ${t};`);
-    lines.push(`  --pico-h3-color: ${t};`);
-    lines.push(`  --pico-h4-color: ${t};`);
-    lines.push(`  --pico-h5-color: ${t};`);
-    lines.push(`  --pico-h6-color: ${t};`);
-    lines.push(`  --pico-form-element-color: ${t};`);
+    lines.push(`  --g-text: ${custom.colorText};`);
+    lines.push(`  --g-text-strong: ${custom.colorText};`);
   }
 
-  // Muted colour — derive border from it at 35 % opacity
   if (custom.colorMuted) {
     const m = custom.colorMuted;
-    lines.push(`  --pico-muted-color: ${m};`);
-    lines.push(`  --pico-muted-border-color: ${m}59;`);  // ~35 % opacity
-    lines.push(`  --pico-border-color: ${m}59;`);
-    lines.push(`  --pico-table-border-color: ${m}59;`);
-    lines.push(`  --pico-form-element-border-color: ${m}80;`);
+    lines.push(`  --g-text-muted: ${m};`);
+    lines.push(`  --g-border: color-mix(in srgb, ${m} 40%, transparent);`);
+    lines.push(`  --g-border-faint: color-mix(in srgb, ${m} 18%, transparent);`);
   }
 
-  let css = '';
-  // Use both :root and html[data-theme="dark"] so our overrides win at both
-  // specificities — PicoCSS dark vars live under html[data-theme="dark"] (0,1,1)
-  // which beats :root (0,1,0), so we need both selectors to reliably override.
-  if (lines.length) css += `:root, html[data-theme="dark"] {\n${lines.join('\n')}\n}\n`;
-  if (custom.fontHeading) css += `h1,h2,h3,h4,h5,h6 { font-family: ${custom.fontHeading}; }\n`;
-  return css;
+  if (!lines.length) return '';
+  return `html {\n${lines.join('\n')}\n}\n`;
 }
 
 export function readThemeCustom(db: import('bun:sqlite').Database): ThemeCustom | null {
@@ -323,8 +244,8 @@ export function readThemeCustom(db: import('bun:sqlite').Database): ThemeCustom 
 }
 
 export function getThemeCss(db: import('bun:sqlite').Database): string {
-  const theme = (configVal(db, 'theme') ?? 'light') as ThemeName;
-  const base = THEMES[theme] ?? THEMES.light;
+  const theme = (configVal(db, 'theme') ?? 'literary') as ThemeName;
+  const base = THEMES[theme] ?? THEMES.literary;
   const custom = readThemeCustom(db);
   if (!custom) return base;
   return base + '\n/* Custom overrides */\n' + buildOverrideCss(custom);
@@ -334,7 +255,7 @@ export function getColorScheme(db: import('bun:sqlite').Database): 'dark' | 'lig
   const custom = readThemeCustom(db);
   if (custom?.colorScheme === 'dark')  return 'dark';
   if (custom?.colorScheme === 'light') return 'light';
-  const theme = configVal(db, 'theme') ?? 'light';
-  if (theme === 'dark' || theme === 'cyberpunk') return 'dark';
+  const theme = configVal(db, 'theme') ?? 'literary';
+  if (theme === 'dark' || theme === 'coder' || theme === 'cyberpunk') return 'dark';
   return 'light';
 }

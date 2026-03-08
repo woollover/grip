@@ -33,7 +33,7 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
     <div>
       <h1 style="margin-top:0;margin-bottom:0.35rem">Articles</h1>
       {tag && (
-        <p style="margin-bottom:1.5rem;font-size:0.875rem;color:var(--pico-muted-color)">
+        <p style="margin-bottom:1.5rem;font-size:0.875rem;color:var(--g-text-muted)">
           {'Filtered by tag: '}
           <span class="tag" style="margin-right:0.5rem">{tag}</span>
           <a href="/articles">clear ×</a>
@@ -41,7 +41,7 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
       )}
       {!tag && <p style="height:1.5rem;margin:0" />}
       {articles.length === 0 && (
-        <p style="color:var(--pico-muted-color)">No articles found{tag ? ` tagged "${tag}"` : ''}.</p>
+        <p style="color:var(--g-text-muted)">No articles found{tag ? ` tagged "${tag}"` : ''}.</p>
       )}
       <ul class="post-list">
         {articles.map(a => {
@@ -89,7 +89,7 @@ export function renderArticle(db: Database, slug: string, siteTitle: string): JS
         ))}
       </div>
       <div class="prose">{article.body_html}</div>
-      <p style="margin-top:2.5rem;font-size:0.875rem;border-top:1px solid var(--pico-muted-border-color);padding-top:1.25rem">
+      <p style="margin-top:2.5rem;font-size:0.875rem;border-top:1px solid var(--g-border-faint);padding-top:1.25rem">
         <a href="/articles">← All articles</a>
       </p>
     </article>

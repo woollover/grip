@@ -16,10 +16,10 @@ export function renderContactsIndex(db: Database, page = 1): JSX.Element {
     <div>
       <div class="page-hd">
         <h2 style="margin:0">Contacts</h2>
-        <small style="color:var(--pico-muted-color)">{total} contact{total !== 1 ? 's' : ''}</small>
+        <small style="color:var(--g-text-muted)">{total} contact{total !== 1 ? 's' : ''}</small>
       </div>
       {followers.length === 0
-        ? <p style="color:var(--pico-muted-color)">No contacts yet.</p>
+        ? <p style="color:var(--g-text-muted)">No contacts yet.</p>
         : (
           <table>
             <thead>
@@ -66,10 +66,10 @@ export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
     <div>
       <div class="page-hd">
         <h2 style="margin:0">Replies</h2>
-        <small style="color:var(--pico-muted-color)">{total} total</small>
+        <small style="color:var(--g-text-muted)">{total} total</small>
       </div>
       {replies.length === 0
-        ? <p style="color:var(--pico-muted-color)">No replies yet.</p>
+        ? <p style="color:var(--g-text-muted)">No replies yet.</p>
         : (
           <table>
             <thead>

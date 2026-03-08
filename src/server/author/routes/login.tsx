@@ -13,44 +13,21 @@ export function renderLoginPage(badPassword: boolean, lockedOut: boolean, db?: D
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{siteTitle} — Login</title>
-        <link rel="stylesheet" href="/static/pico.min.css" />
+        <link rel="stylesheet" href="/static/open-props.min.css" />
+        <link rel="stylesheet" href="/static/grip.css" />
         <link rel="stylesheet" href="/theme.css" />
-        <style>{`
-          .login-wrap {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-          }
-          .login-card {
-            width: 100%;
-            max-width: 360px;
-          }
-          .login-title {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--pico-muted-color);
-            margin: 0 0 2rem;
-          }
-          .login-card input[type=password] {
-            margin-bottom: 0.75rem;
-          }
-        `}</style>
       </head>
       <body>
         <div class="login-wrap">
           <div class="login-card">
             <p class="login-title">{siteTitle}</p>
             {lockedOut && (
-              <p role="alert" style="color:var(--pico-color-red-500);font-size:0.85rem">
+              <p role="alert" style="color:var(--g-danger);font-size:0.85rem">
                 Too many failed attempts. Try again in 15 minutes.
               </p>
             )}
             {badPassword && (
-              <p role="alert" style="color:var(--pico-color-red-500);font-size:0.85rem">
+              <p role="alert" style="color:var(--g-danger);font-size:0.85rem">
                 Incorrect passphrase.
               </p>
             )}

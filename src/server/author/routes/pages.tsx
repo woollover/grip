@@ -118,7 +118,7 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
       <hr />
       {page.status !== 'published'
         ? <form method="POST" action={`/pages/${id}/publish`}><button>Publish</button></form>
-        : <p style="color:var(--pico-muted-color);font-size:0.875rem">Page is published and live.</p>
+        : <p style="color:var(--g-text-muted);font-size:0.875rem">Page is published and live.</p>
       }
     </div>
   );

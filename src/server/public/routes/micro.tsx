@@ -21,10 +21,10 @@ function renderReplies(db: Database, noteId: string): JSX.Element {
   if (replies.length === 0) return '' as unknown as JSX.Element;
 
   return (
-    <section style="margin-top:1rem;padding-left:1rem;border-left:2px solid var(--pico-muted-border-color)">
+    <section style="margin-top:1rem;padding-left:1rem;border-left:2px solid var(--g-border-faint)">
       {replies.map(r => (
         <div style="margin-bottom:0.75rem">
-          <small style="color:var(--pico-muted-color)">
+          <small style="color:var(--g-text-muted)">
             <a href={r.actor_uri} rel="noopener noreferrer" target="_blank" safe>{r.actor_name}</a>
             {' · '}{new Date(r.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </small>
@@ -53,7 +53,7 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
   const content = (
     <div>
       <h1 style="margin-top:0;margin-bottom:1.5rem">Notes</h1>
-      {posts.length === 0 && <p style="color:var(--pico-muted-color)">No notes yet.</p>}
+      {posts.length === 0 && <p style="color:var(--g-text-muted)">No notes yet.</p>}
       <ul class="note-stream">
         {posts.map(p => (
           <li id={p.id}>

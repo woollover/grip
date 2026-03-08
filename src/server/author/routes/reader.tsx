@@ -39,66 +39,6 @@ function preview(html: string, max = 280): string {
   return text.slice(0, max) + '…';
 }
 
-const READER_CSS = `
-.reader-item {
-  padding: 1.1rem 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--pico-muted-border-color) 60%, transparent);
-}
-.reader-item:last-child { border-bottom: none; }
-.reader-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.72rem;
-  color: var(--pico-muted-color);
-  margin-bottom: 0.35rem;
-  flex-wrap: wrap;
-}
-.reader-source-badge {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  border: 1px solid var(--pico-muted-border-color);
-}
-.reader-source-badge.rss  { border-color: #e0562f; color: #e0562f; }
-.reader-source-badge.ap   { border-color: var(--pico-primary); color: var(--pico-primary); }
-.reader-item-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
-}
-.reader-item-title a { color: inherit; text-decoration: none; }
-.reader-item-title a:hover { color: var(--pico-primary); }
-.reader-item-body {
-  font-size: 0.82rem;
-  color: var(--pico-muted-color);
-  line-height: 1.6;
-}
-.reader-item-actions {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-}
-.reader-item-actions a { color: var(--pico-muted-color); text-decoration: none; }
-.reader-item-actions a:hover { color: var(--pico-primary); }
-.reader-empty { color: var(--pico-muted-color); font-size: 0.85rem; padding: 2rem 0; }
-.follow-state {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  border: 1px solid;
-}
-.follow-state.pending  { border-color: var(--pico-muted-color); color: var(--pico-muted-color); }
-.follow-state.accepted { border-color: var(--pico-color-green-500, #2ecc71); color: var(--pico-color-green-500, #2ecc71); }
-.follow-state.rejected { border-color: var(--pico-color-red-500, #e74c3c); color: var(--pico-color-red-500, #e74c3c); }
-.follow-state.none     { border-color: var(--pico-muted-border-color); color: var(--pico-muted-color); }
-`;
-
 // ── Reader home ────────────────────────────────────────────────────────────────
 
 export function renderReaderHome(db: Database, page: number): JSX.Element {
@@ -138,7 +78,7 @@ export function renderReaderHome(db: Database, page: number): JSX.Element {
 
       {items.length > 0 && (
         <>
-          <p style="font-size:0.72rem;color:var(--pico-muted-color);margin-bottom:1rem">
+          <p style="font-size:0.72rem;color:var(--g-text-muted);margin-bottom:1rem">
             {total} item{total !== 1 ? 's' : ''} · chronological
           </p>
           <div>
@@ -192,7 +132,6 @@ export function renderRssIndex(db: Database): JSX.Element {
 
   const content = (
     <div>
-      <style>{READER_CSS}</style>
       <div class="page-hd">
         <h2>RSS Feeds</h2>
         <a href="/reader" role="button" class="outline secondary">← Reader</a>
@@ -210,7 +149,7 @@ export function renderRssIndex(db: Database): JSX.Element {
       </section>
 
       {subs.length === 0 && (
-        <p style="color:var(--pico-muted-color);font-size:0.85rem">No feeds yet.</p>
+        <p style="color:var(--g-text-muted);font-size:0.85rem">No feeds yet.</p>
       )}
 
       {subs.length > 0 && (
@@ -228,10 +167,10 @@ export function renderRssIndex(db: Database): JSX.Element {
               <tr>
                 <td>
                   <div style="font-weight:500" safe>{sub.title || sub.url}</div>
-                  <div style="font-size:0.72rem;color:var(--pico-muted-color)" safe>{sub.url}</div>
+                  <div style="font-size:0.72rem;color:var(--g-text-muted)" safe>{sub.url}</div>
                 </td>
                 <td>{sub.item_count ?? 0}</td>
-                <td style="font-size:0.78rem;color:var(--pico-muted-color)">
+                <td style="font-size:0.78rem;color:var(--g-text-muted)">
                   {sub.last_fetched_at ? fmtRelative(sub.last_fetched_at) : '—'}
                 </td>
                 <td style="white-space:nowrap">
@@ -261,14 +200,13 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
 
   const content = (
     <div>
-      <style>{READER_CSS}</style>
       <div class="page-hd">
         <h2>Following</h2>
         <a href="/reader" role="button" class="outline secondary">← Reader</a>
       </div>
 
       {!apEnabled && (
-        <p style="font-size:0.78rem;color:var(--pico-muted-color);margin-bottom:1.5rem;border-left:2px solid var(--pico-muted-border-color);padding-left:0.75rem">
+        <p style="font-size:0.78rem;color:var(--g-text-muted);margin-bottom:1.5rem;border-left:2px solid var(--g-border-faint);padding-left:0.75rem">
           ActivityPub is not configured. You can still read public streams via outbox polling.
           To send formal Follow requests and receive posts via push delivery, enable ActivityPub in <code>grip.toml</code>.
         </p>
@@ -286,7 +224,7 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
       </section>
 
       {following.length === 0 && (
-        <p style="color:var(--pico-muted-color);font-size:0.85rem">Not following anyone yet.</p>
+        <p style="color:var(--g-text-muted);font-size:0.85rem">Not following anyone yet.</p>
       )}
 
       {following.length > 0 && (
@@ -306,7 +244,7 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
               <tr>
                 <td>
                   <div style="font-weight:500" safe>{f.display_name || f.username}</div>
-                  <div style="font-size:0.72rem;color:var(--pico-muted-color)" safe>@{f.username}@{f.domain}</div>
+                  <div style="font-size:0.72rem;color:var(--g-text-muted)" safe>@{f.username}@{f.domain}</div>
                 </td>
                 <td>
                   <span class={`follow-state ${f.follow_state}`} safe>{f.follow_state}</span>
@@ -315,7 +253,7 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
                   {f.follows_us ? '✓' : '—'}
                 </td>
                 <td>{f.item_count ?? 0}</td>
-                <td style="font-size:0.78rem;color:var(--pico-muted-color)">
+                <td style="font-size:0.78rem;color:var(--g-text-muted)">
                   {f.last_fetched_at ? fmtRelative(f.last_fetched_at) : '—'}
                 </td>
                 <td style="white-space:nowrap">
