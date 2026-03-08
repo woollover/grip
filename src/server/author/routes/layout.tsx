@@ -19,9 +19,9 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
       </head>
       <body class="g-author">
         <div class="container">
-          <nav>
+          <nav class="g-nav">
             <ul>
-              <li><strong><a href="/dashboard">GRIP</a></strong></li>
+              <li class="g-nav-brand"><strong><a href="/dashboard">GRIP</a></strong></li>
 
               <li class="nav-div"></li>
               <li><span class="nav-group-label">Write</span></li>

@@ -51,7 +51,6 @@ export function renderReaderHome(db: Database, page: number): JSX.Element {
 
   const content = (
     <div>
-      <style>{READER_CSS}</style>
       <div class="page-hd">
         <h2>Reader</h2>
         <div style="display:flex;gap:0.5rem">
@@ -84,7 +83,7 @@ export function renderReaderHome(db: Database, page: number): JSX.Element {
           <div>
             {items.map(item => <ReaderItemCard item={item} />)}
           </div>
-          {paginationNav(page, Math.ceil(total / PAGE_SIZE), '/reader')}
+          {paginationNav(page, total, PAGE_SIZE, '/reader')}
         </>
       )}
     </div>
@@ -261,7 +260,7 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
                     <button type="submit" class="outline secondary" style="margin-right:0.35rem">Refresh</button>
                   </form>
                   <form method="POST" action={`/reader/ap/${f.id}/unfollow`} style="display:inline"
-                    onsubmit="return confirm('Unfollow and remove all cached posts?')">
+                    onsubmit={`return confirm("Unfollow and remove all cached posts?")`}>
                     <button type="submit" class="outline secondary">Unfollow</button>
                   </form>
                 </td>

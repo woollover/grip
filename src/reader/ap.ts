@@ -215,8 +215,11 @@ export async function sendFollowActivity(
     signal: AbortSignal.timeout(10_000),
   });
 
-  if (!res.ok && res.status !== 202) {
+  if (!res.ok && res.status !== 202 && res.status < 500) {
     throw new Error(`Follow delivery failed: ${res.status}`);
+  }
+  if (!res.ok && res.status >= 500) {
+    console.warn(`[reader] Follow delivery got ${res.status} (transient), follow stored as pending`);
   }
 }
 
