@@ -29,10 +29,12 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
           hr { margin: 1rem 0; }
           /* ── Nav ── */
           nav { border-bottom: 1px solid var(--pico-muted-border-color); margin-bottom: 1.5rem; }
-          nav ul { list-style: none; display: flex; gap: 1.25rem; padding: 0.6rem 0; margin: 0; }
+          nav ul { list-style: none; display: flex; gap: 1.25rem; padding: 0.6rem 0; margin: 0; align-items: center; flex-wrap: wrap; }
           nav a { font-size: 0.8rem; color: var(--pico-muted-color); text-decoration: none; }
           nav a:hover { color: var(--pico-primary); }
           nav strong a { color: var(--pico-color); font-size: 0.85rem; letter-spacing: 0.05em; }
+          .nav-group-label { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pico-muted-color); opacity: 0.45; margin-right: -0.5rem; }
+          .nav-div { width: 1px; height: 0.9rem; background: var(--pico-muted-border-color); opacity: 0.6; margin: 0 0.1rem; }
           /* ── Editor ── */
           .preview-pane { border: 1px solid var(--pico-muted-border-color); padding: 0.75rem; min-height: 160px; border-radius: var(--pico-border-radius); font-size: 0.82rem; }
           /* ── Page header row ── */
@@ -45,13 +47,23 @@ export function authorLayout(title: string, content: JSX.Element, db?: Database)
           <nav>
             <ul>
               <li><strong><a href="/dashboard">GRIP</a></strong></li>
+
+              <li class="nav-div"></li>
+              <li><span class="nav-group-label">Write</span></li>
               <li><a href="/articles">Articles</a></li>
               <li><a href="/micro">Micro</a></li>
               <li><a href="/pages">Pages</a></li>
               <li><a href="/media">Media</a></li>
+
+              <li class="nav-div"></li>
+              <li><span class="nav-group-label">Read</span></li>
+              <li><a href="/reader">Reader</a></li>
+
+              <li class="nav-div"></li>
               <li><a href="/settings">Settings</a></li>
               {apEnabled && <li><a href="/contacts">Contacts</a></li>}
               {apEnabled && <li><a href="/replies">Replies</a></li>}
+
               <li style="margin-left:auto">
                 <form method="POST" action="/logout" style="margin:0">
                   <button type="submit" class="outline secondary" style="padding:0.25rem 0.75rem">Logout</button>

@@ -51,6 +51,11 @@ import {
   handleThemeChange,
 } from "./routes/settings";
 import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
+import {
+  renderReaderHome, renderRssIndex, renderApFollowingIndex,
+  handleRssSubscribe, handleRssRefresh, handleRssDelete,
+  handleApFollow, handleApRefreshById, handleApUnfollow,
+} from "./routes/reader";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
 import { version as currentVersion } from "../../../package.json";
@@ -477,6 +482,86 @@ export function createAuthorApp(
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
+  });
+
+  // ── Reader ───────────────────────────────────────────────────────────────────
+  app.get("/reader", ({ cookie, query }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    const page = Math.max(1, parseInt(query.page as string) || 1);
+    return html(renderReaderHome(db, page));
+  });
+
+  // RSS
+  app.get("/reader/rss", ({ cookie }) => {
+    return requireAuth(cv(cookie)) ?? html(renderRssIndex(db));
+  });
+
+  app.post("/reader/rss", async ({ body, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    const url = ((body as any).url ?? '').trim();
+    if (!url) return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
+    try {
+      await handleRssSubscribe(db, url);
+    } catch (err) {
+      console.error('[reader] RSS subscribe failed:', err);
+    }
+    return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
+  });
+
+  app.post("/reader/rss/:id/refresh", async ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    try {
+      await handleRssRefresh(db, params.id);
+    } catch (err) {
+      console.error('[reader] RSS refresh failed:', err);
+    }
+    return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
+  });
+
+  app.post("/reader/rss/:id/delete", ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    handleRssDelete(db, params.id);
+    return new Response(null, { status: 302, headers: { Location: '/reader/rss' } });
+  });
+
+  // AP Following
+  app.get("/reader/ap", ({ cookie }) => {
+    return requireAuth(cv(cookie)) ?? html(renderApFollowingIndex(db, apCfg ?? null));
+  });
+
+  app.post("/reader/ap", async ({ body, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    const actor = ((body as any).actor ?? '').trim();
+    if (!actor) return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
+    try {
+      await handleApFollow(db, actor, apCfg ?? null);
+    } catch (err) {
+      console.error('[reader] AP follow failed:', err);
+    }
+    return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
+  });
+
+  app.post("/reader/ap/:id/refresh", async ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    try {
+      await handleApRefreshById(db, params.id, apCfg ?? null);
+    } catch (err) {
+      console.error('[reader] AP refresh failed:', err);
+    }
+    return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
+  });
+
+  app.post("/reader/ap/:id/unfollow", async ({ params, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    await handleApUnfollow(db, params.id, apCfg ?? null);
+    return new Response(null, { status: 302, headers: { Location: '/reader/ap' } });
   });
 
   // ── Update check ─────────────────────────────────────────────────────────────

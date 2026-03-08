@@ -5,6 +5,7 @@ import { buildAcceptActivity, buildNote, buildCreateActivity } from './objects';
 import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
+import { getApFollowingByActorUrl, updateApFollowingState, syncFollowsUs, upsertReaderItems } from '../reader/store';
 
 export async function handleInbox(
   db: Database,
@@ -44,10 +45,15 @@ export async function handleInbox(
     case 'Undo':
       handleUndo(db, activity, actorUri);
       break;
+    case 'Accept':
+      handleAccept(db, activity, actorUri);
+      break;
     case 'Create':
       if (cfg.acceptReplies) {
         await handleCreateReply(db, cfg, activity, actorUri);
       }
+      // Store push-delivered posts from actors we follow in the reader
+      handleCreateFromFollowed(db, activity, actorUri);
       break;
     case 'Delete':
       handleDelete(db, activity);
@@ -94,6 +100,9 @@ async function handleFollow(
     console.error('[activitypub] Failed to fetch follower actor:', err);
     return;
   }
+
+  // If we're following this actor, mark that they follow us back
+  syncFollowsUs(db, actorUri, true);
 
   // Upsert follower
   db.query(
@@ -212,6 +221,40 @@ async function handleCreateReply(
     Date.now(),
     'visible',
   );
+}
+
+/** Handle Accept — remote server accepted our Follow request. */
+function handleAccept(db: Database, activity: any, actorUri: string): void {
+  const inner = activity.object;
+  if (!inner || inner.type !== 'Follow') return;
+  updateApFollowingState(db, actorUri, 'accepted');
+}
+
+/** Store push-delivered posts from actors we're following into reader_items. */
+function handleCreateFromFollowed(db: Database, activity: any, actorUri: string): void {
+  const following = getApFollowingByActorUrl(db, actorUri);
+  if (!following) return; // not following this actor
+
+  const note = activity.object;
+  if (!note || note.type !== 'Note') return;
+
+  // Only public notes, skip replies
+  const to: string[] = Array.isArray(note.to) ? note.to : [note.to ?? ''];
+  const cc: string[] = Array.isArray(note.cc) ? note.cc : [note.cc ?? ''];
+  const isPublic = [...to, ...cc].some(u => u?.includes('activitystreams#Public') || u === 'as:Public');
+  if (!isPublic || note.inReplyTo) return;
+
+  const url = typeof note.url === 'string' ? note.url : note.id ?? '';
+  const sanitized = (note.content ?? '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+  upsertReaderItems(db, 'ap', following.id, [{
+    guid: note.id ?? url,
+    itemUrl: url,
+    title: '',
+    contentHtml: sanitized,
+    author: following.username,
+    publishedAt: note.published ? new Date(note.published) : new Date(),
+  }]);
 }
 
 function handleDelete(db: Database, activity: any): void {

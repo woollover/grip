@@ -99,5 +99,45 @@ function initSchema(db: Database): void {
       published_at INTEGER NOT NULL,
       status       TEXT NOT NULL DEFAULT 'visible'
     ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS rss_subscriptions (
+      id              TEXT PRIMARY KEY,
+      url             TEXT UNIQUE NOT NULL,
+      title           TEXT NOT NULL DEFAULT '',
+      description     TEXT NOT NULL DEFAULT '',
+      site_url        TEXT NOT NULL DEFAULT '',
+      last_fetched_at INTEGER,
+      created_at      INTEGER NOT NULL
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS ap_following (
+      id              TEXT PRIMARY KEY,
+      actor_url       TEXT UNIQUE NOT NULL,
+      username        TEXT NOT NULL DEFAULT '',
+      display_name    TEXT NOT NULL DEFAULT '',
+      domain          TEXT NOT NULL DEFAULT '',
+      avatar_url      TEXT NOT NULL DEFAULT '',
+      inbox_url       TEXT NOT NULL DEFAULT '',
+      follow_state    TEXT NOT NULL DEFAULT 'none',
+      follows_us      INTEGER NOT NULL DEFAULT 0,
+      last_fetched_at INTEGER,
+      created_at      INTEGER NOT NULL
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS reader_items (
+      id           TEXT PRIMARY KEY,
+      source_type  TEXT NOT NULL,
+      source_id    TEXT NOT NULL,
+      guid         TEXT NOT NULL,
+      item_url     TEXT NOT NULL DEFAULT '',
+      title        TEXT NOT NULL DEFAULT '',
+      content_html TEXT NOT NULL DEFAULT '',
+      author       TEXT NOT NULL DEFAULT '',
+      published_at INTEGER NOT NULL,
+      fetched_at   INTEGER NOT NULL
+    ) STRICT;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS reader_items_dedup ON reader_items(source_type, source_id, guid);
+    CREATE INDEX IF NOT EXISTS reader_items_pub ON reader_items(published_at DESC);
   `);
 }
