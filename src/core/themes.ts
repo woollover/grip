@@ -1,24 +1,34 @@
 // GRIP theme system — CSS token overrides for grip.css
 // Themes override --g-* semantic tokens. No PicoCSS dependency.
 
-function configVal(db: import('bun:sqlite').Database, key: string): string | null {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null;
+function configVal(
+  db: import("bun:sqlite").Database,
+  key: string,
+): string | null {
+  const row = db.prepare("SELECT value FROM config WHERE key = ?").get(key) as {
+    value: string;
+  } | null;
   return row?.value ?? null;
 }
 
-export type ThemeName = 'light' | 'dark' | 'coder' | 'cyberpunk' | 'literary' | 'ink';
+export type ThemeName =
+  | "light"
+  | "dark"
+  | "coder"
+  | "cyberpunk"
+  | "literary"
+  | "ink";
 
 // Base theme CSS — each preset overrides the --g-* tokens defined in grip.css.
 // The :root block handles both light[data-theme] and dark[data-theme] specificity.
 export const THEMES: Record<ThemeName, string> = {
-
   light: `/* GRIP — Light (default) */
 :root { color-scheme: light; }
 `,
 
   dark: `/* GRIP — Dark */
-:root { color-scheme: dark; }
-html { --g-bg: #1a1d23; --g-surface: #22262d; --g-surface-2: #2c3038;
+html[data-theme] { color-scheme: dark;
+  --g-bg: #1a1d23; --g-surface: #22262d; --g-surface-2: #2c3038;
   --g-border: #373d47; --g-border-faint: rgba(100,112,130,.2);
   --g-text: #ced4da; --g-text-muted: #868e96; --g-text-strong: #f1f3f5;
   --g-accent: #74c0fc; --g-accent-hover: #a5d8ff; --g-accent-fg: #1a1d23;
@@ -28,7 +38,7 @@ html { --g-bg: #1a1d23; --g-surface: #22262d; --g-surface-2: #2c3038;
 `,
 
   coder: `/* GRIP — Coder (GitHub dark) */
-html {
+html[data-theme] {
   color-scheme: dark;
   --g-bg:           #0d1117;
   --g-surface:      #161b22;
@@ -50,7 +60,7 @@ html {
 `,
 
   cyberpunk: `/* GRIP — Cyberpunk */
-html {
+html[data-theme] {
   color-scheme: dark;
   --g-bg:           #0a0a12;
   --g-surface:      #12121e;
@@ -73,7 +83,7 @@ html {
 `,
 
   literary: `/* GRIP — Literary (warm serif) */
-html {
+html[data-theme] {
   color-scheme: light;
   --g-bg:           #faf8f3;
   --g-surface:      #f3f0e8;
@@ -97,7 +107,7 @@ html {
 `,
 
   ink: `/* GRIP — Ink (editorial black & white) */
-html {
+html[data-theme] {
   color-scheme: light;
   --g-bg:           #ffffff;
   --g-surface:      #f8f9fa;
@@ -123,91 +133,91 @@ html {
 // ── Custom overrides ───────────────────────────────────────────────────────────
 
 export interface ThemeCustom {
-  colorScheme?: 'light' | 'dark';
-  fontBody?:    string;
+  colorScheme?: "light" | "dark";
+  fontBody?: string;
   fontHeading?: string;
-  fontMono?:    string;
+  fontMono?: string;
   colorAccent?: string;
-  colorBg?:     string;
-  colorText?:   string;
-  colorMuted?:  string;
-  radius?:      string;  // CSS length value for --g-r
-  spacing?:     string;  // named density: 'compact' | 'default' | 'relaxed'
+  colorBg?: string;
+  colorText?: string;
+  colorMuted?: string;
+  radius?: string; // CSS length value for --g-r
+  spacing?: string; // named density: 'compact' | 'default' | 'relaxed'
 }
 
 // Default field values for the theme editor form, per preset.
 export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
   light: {
-    colorScheme: 'light',
-    fontBody:    'var(--font-sans)',
-    fontHeading: '',
-    fontMono:    'var(--font-mono)',
-    colorAccent: '#1971c2',
-    colorBg:     '#ffffff',
-    colorText:   '#343a40',
-    colorMuted:  '#868e96',
-    radius:      '6px',
-    spacing:     'default',
+    colorScheme: "light",
+    fontBody: "var(--font-sans)",
+    fontHeading: "",
+    fontMono: "var(--font-mono)",
+    colorAccent: "#1971c2",
+    colorBg: "#ffffff",
+    colorText: "#343a40",
+    colorMuted: "#868e96",
+    radius: "6px",
+    spacing: "default",
   },
   dark: {
-    colorScheme: 'dark',
-    fontBody:    'var(--font-sans)',
-    fontHeading: '',
-    fontMono:    'var(--font-mono)',
-    colorAccent: '#74c0fc',
-    colorBg:     '#1a1d23',
-    colorText:   '#ced4da',
-    colorMuted:  '#868e96',
-    radius:      '6px',
-    spacing:     'default',
+    colorScheme: "dark",
+    fontBody: "var(--font-sans)",
+    fontHeading: "",
+    fontMono: "var(--font-mono)",
+    colorAccent: "#74c0fc",
+    colorBg: "#1a1d23",
+    colorText: "#ced4da",
+    colorMuted: "#868e96",
+    radius: "6px",
+    spacing: "default",
   },
   coder: {
-    colorScheme: 'dark',
-    fontBody:    'var(--font-system-ui)',
-    fontHeading: '',
-    fontMono:    'var(--font-monospace-code)',
-    colorAccent: '#58a6ff',
-    colorBg:     '#0d1117',
-    colorText:   '#e6edf3',
-    colorMuted:  '#8b949e',
-    radius:      '4px',
-    spacing:     'compact',
+    colorScheme: "dark",
+    fontBody: "var(--font-system-ui)",
+    fontHeading: "",
+    fontMono: "var(--font-monospace-code)",
+    colorAccent: "#58a6ff",
+    colorBg: "#0d1117",
+    colorText: "#e6edf3",
+    colorMuted: "#8b949e",
+    radius: "4px",
+    spacing: "compact",
   },
   cyberpunk: {
-    colorScheme: 'dark',
-    fontBody:    'var(--font-monospace-slab-serif)',
-    fontHeading: 'var(--font-monospace-slab-serif)',
-    fontMono:    'var(--font-monospace-slab-serif)',
-    colorAccent: '#00ff88',
-    colorBg:     '#0a0a12',
-    colorText:   '#c8c8e8',
-    colorMuted:  '#6868a0',
-    radius:      '0px',
-    spacing:     'compact',
+    colorScheme: "dark",
+    fontBody: "var(--font-monospace-slab-serif)",
+    fontHeading: "var(--font-monospace-slab-serif)",
+    fontMono: "var(--font-monospace-slab-serif)",
+    colorAccent: "#00ff88",
+    colorBg: "#0a0a12",
+    colorText: "#c8c8e8",
+    colorMuted: "#6868a0",
+    radius: "0px",
+    spacing: "compact",
   },
   literary: {
-    colorScheme: 'light',
-    fontBody:    'var(--font-old-style)',
-    fontHeading: 'var(--font-classical-humanist)',
-    fontMono:    'var(--font-mono)',
-    colorAccent: '#8b5e3c',
-    colorBg:     '#faf8f3',
-    colorText:   '#2c2a24',
-    colorMuted:  '#9a9080',
-    radius:      '4px',
-    spacing:     'relaxed',
+    colorScheme: "light",
+    fontBody: "var(--font-old-style)",
+    fontHeading: "var(--font-classical-humanist)",
+    fontMono: "var(--font-mono)",
+    colorAccent: "#8b5e3c",
+    colorBg: "#faf8f3",
+    colorText: "#2c2a24",
+    colorMuted: "#9a9080",
+    radius: "4px",
+    spacing: "relaxed",
   },
   ink: {
-    colorScheme: 'light',
-    fontBody:    'var(--font-transitional)',
-    fontHeading: '',
-    fontMono:    'var(--font-mono)',
-    colorAccent: '#1a3a6e',
-    colorBg:     '#ffffff',
-    colorText:   '#111111',
-    colorMuted:  '#666666',
-    radius:      '2px',
-    spacing:     'relaxed',
+    colorScheme: "light",
+    fontBody: "var(--font-transitional)",
+    fontHeading: "",
+    fontMono: "var(--font-mono)",
+    colorAccent: "#1a3a6e",
+    colorBg: "#ffffff",
+    colorText: "#111111",
+    colorMuted: "#666666",
+    radius: "2px",
+    spacing: "relaxed",
   },
 };
 
@@ -215,15 +225,18 @@ export function buildOverrideCss(custom: ThemeCustom): string {
   const lines: string[] = [];
 
   if (custom.colorScheme) lines.push(`  color-scheme: ${custom.colorScheme};`);
-  if (custom.fontBody)    lines.push(`  --g-font-body: ${custom.fontBody};`);
-  if (custom.fontMono)    lines.push(`  --g-font-mono: ${custom.fontMono};`);
-  if (custom.fontHeading) lines.push(`  --g-font-heading: ${custom.fontHeading};`);
+  if (custom.fontBody) lines.push(`  --g-font-body: ${custom.fontBody};`);
+  if (custom.fontMono) lines.push(`  --g-font-mono: ${custom.fontMono};`);
+  if (custom.fontHeading)
+    lines.push(`  --g-font-heading: ${custom.fontHeading};`);
 
   if (custom.colorAccent) {
     const a = custom.colorAccent;
     lines.push(`  --g-accent: ${a};`);
     lines.push(`  --g-accent-hover: color-mix(in srgb, ${a} 80%, black);`);
-    lines.push(`  --g-accent-muted: color-mix(in srgb, ${a} 12%, transparent);`);
+    lines.push(
+      `  --g-accent-muted: color-mix(in srgb, ${a} 12%, transparent);`,
+    );
     // fg: white unless accent is very light
     lines.push(`  --g-accent-fg: #ffffff;`);
   }
@@ -231,8 +244,12 @@ export function buildOverrideCss(custom: ThemeCustom): string {
   if (custom.colorBg) {
     const bg = custom.colorBg;
     lines.push(`  --g-bg: ${bg};`);
-    lines.push(`  --g-surface: color-mix(in srgb, ${bg} 85%, ${custom.colorScheme === 'dark' ? 'white' : 'black'} 15%);`);
-    lines.push(`  --g-code-bg: color-mix(in srgb, ${bg} 80%, ${custom.colorScheme === 'dark' ? 'white' : 'black'} 20%);`);
+    lines.push(
+      `  --g-surface: color-mix(in srgb, ${bg} 85%, ${custom.colorScheme === "dark" ? "white" : "black"} 15%);`,
+    );
+    lines.push(
+      `  --g-code-bg: color-mix(in srgb, ${bg} 80%, ${custom.colorScheme === "dark" ? "white" : "black"} 20%);`,
+    );
   }
 
   if (custom.colorText) {
@@ -244,52 +261,84 @@ export function buildOverrideCss(custom: ThemeCustom): string {
     const m = custom.colorMuted;
     lines.push(`  --g-text-muted: ${m};`);
     lines.push(`  --g-border: color-mix(in srgb, ${m} 40%, transparent);`);
-    lines.push(`  --g-border-faint: color-mix(in srgb, ${m} 18%, transparent);`);
+    lines.push(
+      `  --g-border-faint: color-mix(in srgb, ${m} 18%, transparent);`,
+    );
   }
 
   if (custom.radius) {
     const r = custom.radius;
     const rNum = parseFloat(r);
-    const unit = r.replace(/[\d.]/g, '') || 'px';
-    lines.push(`  --g-r:    ${r};`);
-    lines.push(`  --g-r-sm: ${Math.max(0, rNum / 2)}${unit};`);
-    lines.push(`  --g-r-lg: ${rNum * 2}${unit};`);
+    const unit = r.replace(/[\d.]/g, "") || "px";
+    const rInput = Math.min(rNum, 10);
+    lines.push(`  --g-r:       ${r};`);
+    lines.push(`  --g-r-sm:    ${Math.max(0, rNum / 2)}${unit};`);
+    lines.push(`  --g-r-lg:    ${rNum * 2}${unit};`);
+    lines.push(`  --g-r-input: ${rInput}${unit};`);
   }
 
   if (custom.spacing) {
-    const densities: Record<string, [string, string]> = {
-      compact: ['0.28rem', '0.75rem'],
-      default: ['0.45rem', '1rem'],
-      relaxed: ['0.65rem', '1.25rem'],
+    const densities: Record<string, [string, string, string]> = {
+      compact: ["0.28rem", "0.75rem", "0.75rem"],
+      default: ["0.45rem", "1rem", "1rem"],
+      relaxed: ["0.65rem", "1.25rem", "1.25rem"],
     };
-    const [py, px] = densities[custom.spacing] ?? densities.default;
+    const [py, px, space] = densities[custom.spacing] ?? densities.default;
     lines.push(`  --g-pad-y: ${py};`);
     lines.push(`  --g-pad-x: ${px};`);
+    lines.push(`  --g-space: ${space};`);
+    lines.push(`  --g-space-sm: ${parseFloat(space) * 0.5}rem;`);
+    lines.push(`  --g-space-lg: ${parseFloat(space) * 1.5}rem;`);
+    lines.push(`  --g-space-xl: ${parseFloat(space) * 2}rem;`);
   }
 
-  if (!lines.length) return '';
-  return `html {\n${lines.join('\n')}\n}\n`;
+  if (!lines.length) return "";
+  return `html[data-theme] {\n${lines.join("\n")}\n}\n`;
 }
 
-export function readThemeCustom(db: import('bun:sqlite').Database): ThemeCustom | null {
-  const val = configVal(db, 'theme_custom');
+export function readThemeCustom(
+  db: import("bun:sqlite").Database,
+): ThemeCustom | null {
+  const val = configVal(db, "theme_custom");
   if (!val) return null;
-  try { return JSON.parse(val); } catch { return null; }
+  try {
+    return JSON.parse(val);
+  } catch {
+    return null;
+  }
 }
 
-export function getThemeCss(db: import('bun:sqlite').Database): string {
-  const theme = (configVal(db, 'theme') ?? 'literary') as ThemeName;
+export function getThemeCss(db: import("bun:sqlite").Database): string {
+  const theme = (configVal(db, "theme") ?? "literary") as ThemeName;
   const base = THEMES[theme] ?? THEMES.literary;
   const custom = readThemeCustom(db);
   if (!custom) return base;
-  return base + '\n/* Custom overrides */\n' + buildOverrideCss(custom);
+  return base + "\n/* Custom overrides */\n" + buildOverrideCss(custom);
 }
 
-export function getColorScheme(db: import('bun:sqlite').Database): 'dark' | 'light' {
+export function getColorScheme(
+  db: import("bun:sqlite").Database,
+): "dark" | "light" {
   const custom = readThemeCustom(db);
-  if (custom?.colorScheme === 'dark')  return 'dark';
-  if (custom?.colorScheme === 'light') return 'light';
-  const theme = configVal(db, 'theme') ?? 'literary';
-  if (theme === 'dark' || theme === 'coder' || theme === 'cyberpunk') return 'dark';
-  return 'light';
+  if (custom?.colorScheme === "dark") return "dark";
+  if (custom?.colorScheme === "light") return "light";
+  const theme = configVal(db, "theme") ?? "literary";
+  if (theme === "dark" || theme === "coder" || theme === "cyberpunk")
+    return "dark";
+  return "light";
+}
+
+export function getThemeVersion(db: import("bun:sqlite").Database): string {
+  // Generate a hash based on theme and custom settings to bust browser cache
+  const theme = configVal(db, "theme") ?? "literary";
+  const custom = configVal(db, "theme_custom") ?? "";
+  const combined = theme + "|" + custom;
+  // Simple hash function
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
 }

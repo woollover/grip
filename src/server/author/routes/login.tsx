@@ -1,11 +1,19 @@
-import type { Database } from 'bun:sqlite';
-import { getColorScheme } from '../../../core/themes';
+import type { Database } from "bun:sqlite";
+import { getColorScheme } from "../../../core/themes";
 
-export function renderLoginPage(badPassword: boolean, lockedOut: boolean, db?: Database): JSX.Element {
-  const scheme = db ? getColorScheme(db) : 'light';
+export function renderLoginPage(
+  badPassword: boolean,
+  lockedOut: boolean,
+  db?: Database,
+): JSX.Element {
+  const scheme = db ? getColorScheme(db) : "light";
   const siteTitle = db
-    ? ((db.prepare("SELECT value FROM config WHERE key = 'site_title'").get() as { value: string } | null)?.value ?? 'GRIP')
-    : 'GRIP';
+    ? ((
+        db
+          .prepare("SELECT value FROM config WHERE key = 'site_title'")
+          .get() as { value: string } | null
+      )?.value ?? "GRIP")
+    : "GRIP";
 
   const page = (
     <html lang="en" data-theme={scheme}>
@@ -15,7 +23,7 @@ export function renderLoginPage(badPassword: boolean, lockedOut: boolean, db?: D
         <title>{siteTitle} — Login</title>
         <link rel="stylesheet" href="/static/open-props.min.css" />
         <link rel="stylesheet" href="/static/grip.css" />
-        <link rel="stylesheet" href="/theme.css" />
+        <link rel="stylesheet" href="/theme.css?v=login" />
       </head>
       <body>
         <div class="login-wrap">
@@ -32,14 +40,22 @@ export function renderLoginPage(badPassword: boolean, lockedOut: boolean, db?: D
               </p>
             )}
             <form method="POST" action="/login">
-              <input type="password" id="passphrase" name="passphrase"
-                placeholder="Passphrase" autofocus required />
-              <button type="submit" style="width:100%">Enter</button>
+              <input
+                type="password"
+                id="passphrase"
+                name="passphrase"
+                placeholder="Passphrase"
+                autofocus
+                required
+              />
+              <button type="submit" style="width:100%">
+                Enter
+              </button>
             </form>
           </div>
         </div>
       </body>
     </html>
   );
-  return ('<!DOCTYPE html>' + page) as unknown as JSX.Element;
+  return ("<!DOCTYPE html>" + page) as unknown as JSX.Element;
 }
