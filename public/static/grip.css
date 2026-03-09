@@ -200,7 +200,7 @@ pre {
   line-height: 1.65;
   background: var(--g-code-bg);
   border: 1px solid var(--g-border);
-  border-radius: var(--g-r);
+  border-radius: var(--g-r-input);
   padding: 1rem 1.25rem;
   overflow-x: auto;
   margin-block: 0 1em;
@@ -898,6 +898,10 @@ body.g-author hr {
 .ks-preview textarea {
   font-size: 0.875rem;
   padding: var(--g-pad-y) 0.75rem;
+  border-radius: var(--g-r-input);
+}
+.ks-preview pre,
+.ks-preview code {
   border-radius: var(--g-r-input);
 }
 

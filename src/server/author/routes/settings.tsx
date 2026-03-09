@@ -384,7 +384,7 @@ function KitchenSink(): JSX.Element {
 
       {/* Code block */}
       <KsSectionLabel>Code</KsSectionLabel>
-      <pre style="margin:0">{`function greet(name: string) {
+      <pre style="margin:0;border-radius:var(--g-r-input)">{`function greet(name: string) {
   return \`Hello, \${name}!\`;
 }`}</pre>
 
@@ -495,6 +495,18 @@ export function renderThemeSettings(db: Database): JSX.Element {
 (function() {
   const PRESETS = ${JSON.stringify(PRESET_DEFAULTS)};
 
+  function getLuminance(hex) {
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    const lin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
+  function pickFg(hex) {
+    const l = getLuminance(hex);
+    return 1.05 / (l + 0.05) >= (l + 0.05) / 0.05 ? '#ffffff' : '#000000';
+  }
+
   const VAR_MAP = {
     colorAccent: '--g-accent',
     colorBg:     '--g-bg',
@@ -568,6 +580,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
     if (accent) {
       root.style.setProperty('--g-accent-hover',  \`color-mix(in srgb, \${accent} 80%, black)\`);
       root.style.setProperty('--g-accent-muted', \`color-mix(in srgb, \${accent} 12%, transparent)\`);
+      root.style.setProperty('--g-accent-fg', pickFg(accent));
     }
     if (muted) {
       root.style.setProperty('--g-border',       \`color-mix(in srgb, \${muted} 40%, transparent)\`);
@@ -654,8 +667,8 @@ export function renderThemeSettings(db: Database): JSX.Element {
     }
     for (const v of ['--g-font-heading','--g-r','--g-r-sm','--g-r-lg','--g-r-input',
                       '--g-pad-y','--g-pad-x','--g-surface','--g-surface-2','--g-code-bg',
-                      '--g-accent-hover','--g-accent-muted','--g-border','--g-border-faint',
-                      '--g-text-strong']) {
+                      '--g-accent-fg','--g-accent-hover','--g-accent-muted',
+                      '--g-border','--g-border-faint','--g-text-strong']) {
       root.style.removeProperty(v);
     }
     const hs = document.getElementById('grip-heading-live');

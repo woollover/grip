@@ -221,6 +221,20 @@ export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
   },
 };
 
+function wcagLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const lin = (c: number) =>
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function pickAccentFg(hex: string): string {
+  const l = wcagLuminance(hex);
+  return 1.05 / (l + 0.05) >= (l + 0.05) / 0.05 ? "#ffffff" : "#000000";
+}
+
 export function buildOverrideCss(custom: ThemeCustom): string {
   const lines: string[] = [];
 
@@ -237,8 +251,7 @@ export function buildOverrideCss(custom: ThemeCustom): string {
     lines.push(
       `  --g-accent-muted: color-mix(in srgb, ${a} 12%, transparent);`,
     );
-    // fg: white unless accent is very light
-    lines.push(`  --g-accent-fg: #ffffff;`);
+    lines.push(`  --g-accent-fg: ${pickAccentFg(a)};`);
   }
 
   if (custom.colorBg) {
