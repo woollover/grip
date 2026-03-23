@@ -53,6 +53,7 @@ import {
 } from "./routes/settings";
 import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
 import { renderExportPage, handleExportDownload } from "./routes/export";
+import { renderBackupPage, handleBackupDownload } from "./routes/backup";
 import {
   renderReaderHome, renderRssIndex, renderApFollowingIndex,
   handleRssSubscribe, handleRssRefresh, handleRssDelete,
@@ -417,6 +418,17 @@ export function createAuthorApp(
     const guard = requireAuth(cv(cookie));
     if (guard) return guard;
     return handleExportDownload(db);
+  });
+
+  // ── Backup ───────────────────────────────────────────────────────────────────
+  app.get("/backup", ({ cookie }) => {
+    return requireAuth(cv(cookie)) ?? html(renderBackupPage(db));
+  });
+
+  app.post("/backup/download", async ({ cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    return handleBackupDownload(db);
   });
 
   // ── ActivityPub author views ────────────────────────────────────────────────

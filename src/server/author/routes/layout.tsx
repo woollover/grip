@@ -68,6 +68,9 @@ export function authorLayout(
               <li>
                 <a href="/export">Export</a>
               </li>
+              <li>
+                <a href="/backup">Backup</a>
+              </li>
               {apEnabled && (
                 <li>
                   <a href="/contacts">Contacts</a>

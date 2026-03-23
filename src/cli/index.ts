@@ -6,6 +6,8 @@ import { serveCommand } from './commands/serve';
 import { rebuildCommand } from './commands/rebuild';
 import { statusCommand } from './commands/status';
 import { exportCommand } from './commands/export';
+import { backupCommand } from './commands/backup';
+import { restoreCommand } from './commands/restore';
 
 const [, , command, ...args] = process.argv;
 
@@ -17,6 +19,8 @@ const commands: Record<string, (args: string[]) => Promise<void> | void> = {
   rebuild: rebuildCommand,
   status: statusCommand,
   export: exportCommand,
+  backup: backupCommand,
+  restore: restoreCommand,
 };
 
 if (!command || command === '--help' || command === '-h') {
@@ -33,6 +37,8 @@ Commands:
   rebuild            Replay all events and rebuild projections
   status             Show last 20 events
   export [--out dir] Export all content as portable Markdown + media files
+  backup [--out f]   Snapshot DB + media into a .tar.gz backup
+  restore <file>     Restore from a backup (server must be stopped first)
 `);
   process.exit(0);
 }
