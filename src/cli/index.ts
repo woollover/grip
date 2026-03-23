@@ -5,6 +5,7 @@ import { microCommand } from './commands/micro';
 import { serveCommand } from './commands/serve';
 import { rebuildCommand } from './commands/rebuild';
 import { statusCommand } from './commands/status';
+import { exportCommand } from './commands/export';
 
 const [, , command, ...args] = process.argv;
 
@@ -15,6 +16,7 @@ const commands: Record<string, (args: string[]) => Promise<void> | void> = {
   serve: serveCommand,
   rebuild: rebuildCommand,
   status: statusCommand,
+  export: exportCommand,
 };
 
 if (!command || command === '--help' || command === '-h') {
@@ -30,6 +32,7 @@ Commands:
   micro "text"       Post a micro-note
   rebuild            Replay all events and rebuild projections
   status             Show last 20 events
+  export [--out dir] Export all content as portable Markdown + media files
 `);
   process.exit(0);
 }

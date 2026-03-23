@@ -52,6 +52,7 @@ import {
   handlePublicityUpdate,
 } from "./routes/settings";
 import { renderRepliesIndex, handleReplyToggle, renderContactsIndex } from "./routes/replies";
+import { renderExportPage, handleExportDownload } from "./routes/export";
 import {
   renderReaderHome, renderRssIndex, renderApFollowingIndex,
   handleRssSubscribe, handleRssRefresh, handleRssDelete,
@@ -405,6 +406,17 @@ export function createAuthorApp(
       status: 302,
       headers: { Location: "/settings" },
     });
+  });
+
+  // ── Export ───────────────────────────────────────────────────────────────────
+  app.get("/export", ({ cookie }) => {
+    return requireAuth(cv(cookie)) ?? html(renderExportPage(db));
+  });
+
+  app.post("/export/download", async ({ cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    return handleExportDownload(db);
   });
 
   // ── ActivityPub author views ────────────────────────────────────────────────
