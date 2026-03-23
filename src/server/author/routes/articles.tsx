@@ -4,16 +4,22 @@ import { commitEvent } from '../../../core/projections';
 import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
-import { editorImageWidget } from './media';
-import { AlignPicker } from './shared';
+import { paginationNav } from '../../../views/shared';
+import { getSiteHost } from './shared';
+
+const PAGE_SIZE = 20;
 
 interface Article {
   id: string; slug: string; title: string; body_md: string;
   tags: string; status: string; created_at: number; updated_at: number; published_at: number | null;
 }
 
-export function renderArticlesIndex(db: Database): JSX.Element {
-  const articles = db.prepare('SELECT * FROM articles ORDER BY updated_at DESC').all() as Article[];
+export function renderArticlesIndex(db: Database, page = 1): JSX.Element {
+  const total = (db.prepare('SELECT COUNT(*) as n FROM articles').get() as { n: number }).n;
+  const offset = (page - 1) * PAGE_SIZE;
+  const articles = db.prepare(
+    'SELECT * FROM articles ORDER BY updated_at DESC LIMIT ? OFFSET ?'
+  ).all(PAGE_SIZE, offset) as Article[];
 
   const content = (
     <div>
@@ -50,6 +56,7 @@ export function renderArticlesIndex(db: Database): JSX.Element {
           ))}
         </tbody>
       </table>
+      {paginationNav(page, total, PAGE_SIZE, '/articles')}
     </div>
   );
 
@@ -66,16 +73,15 @@ export function renderArticleNew(db: Database): JSX.Element {
         <label>Tags (comma-separated) <input type="text" name="tags" /></label>
         <label>
           Body (Markdown)
-          <textarea name="body" rows="20"
+          <textarea name="body" rows="20" data-md-editor
             hx-post="/preview" hx-trigger="keyup changed delay:300ms"
             hx-target="#preview" />
         </label>
-        <AlignPicker />
-        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview"><em>Preview will appear here…</em></div>
         <button type="submit">Save draft</button>
         <a href="/articles" role="button" class="outline secondary">Cancel</a>
       </form>
+      <script src="/static/grip-editor.js" defer />
     </div>
   );
 
@@ -97,27 +103,32 @@ export function handleArticleCreate(
 export function renderArticleEdit(db: Database, id: string): JSX.Element {
   const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(id) as Article | null;
   if (!article) return authorLayout('Not found', <p>Article not found.</p>, db);
+  const siteHost = getSiteHost(db);
 
   const content = (
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <h2>Edit: {article.title}</h2>
-        <span>Status: <strong>{article.status}</strong></span>
+        <span style="display:flex;gap:0.75rem;align-items:center;font-size:0.875rem">
+          <span>Status: <strong>{article.status}</strong></span>
+          {article.status === 'published' && (
+            <a href={`//${siteHost}/articles/${article.slug}`} target="_blank" rel="noopener">View →</a>
+          )}
+        </span>
       </div>
       <form method="POST" action={`/articles/${id}/revise`}>
         <label>Title <input type="text" name="title" value={article.title} required /></label>
         <label>Tags <input type="text" name="tags" value={JSON.parse(article.tags).join(', ')} /></label>
         <label>
           Body (Markdown)
-          <textarea name="body" rows="20"
+          <textarea name="body" rows="20" data-md-editor
             hx-post="/preview" hx-trigger="keyup changed delay:300ms"
             hx-target="#preview">{article.body_md}</textarea>
         </label>
-        <AlignPicker />
-        <div>{editorImageWidget()}</div>
         <div class="preview-pane" id="preview">Loading preview…</div>
         <button type="submit">Save revision</button>
       </form>
+      <script src="/static/grip-editor.js" defer />
       <hr />
       <div style="display:flex;gap:1rem">
         {article.status !== 'published'

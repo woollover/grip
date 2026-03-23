@@ -5,7 +5,7 @@ import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { editorImageWidget } from './media';
-import { AlignPicker } from './shared';
+import { AlignPicker, getSiteHost } from './shared';
 
 interface Page {
   id: string; slug: string; title: string; body_md: string;
@@ -89,6 +89,7 @@ export function handlePageCreate(
 export function renderPageEdit(db: Database, id: string): JSX.Element {
   const page = db.prepare('SELECT * FROM pages WHERE id = ?').get(id) as Page | null;
   if (!page) return authorLayout('Not found', <p>Page not found.</p>, db);
+  const siteHost = getSiteHost(db);
 
   const content = (
     <div>
@@ -97,7 +98,7 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
         <span style="display:flex;gap:0.75rem;align-items:center;font-size:0.875rem">
           <span>Status: <strong>{page.status}</strong></span>
           {page.status === 'published' && (
-            <a href={`http://localhost:3000/pages/${page.slug}`} target="_blank" rel="noopener">View →</a>
+            <a href={`//${siteHost}/pages/${page.slug}`} target="_blank" rel="noopener">View →</a>
           )}
         </span>
       </div>

@@ -971,6 +971,67 @@ body.g-author hr {
   margin: 0;
 }
 
+/* ── Markdown editor toolbar ── */
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.3rem;
+}
+.md-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 0.28rem 0.4rem;
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-bottom: none;
+  border-radius: var(--g-r-input) var(--g-r-input) 0 0;
+}
+.md-btn {
+  font-size: 0.72rem;
+  font-family: var(--g-font-mono);
+  padding: 0.18rem 0.45rem;
+  min-width: 1.8rem;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--g-r-sm);
+  color: var(--g-text-muted);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background var(--g-t), color var(--g-t), border-color var(--g-t);
+}
+.md-btn:hover {
+  background: var(--g-surface-2);
+  border-color: var(--g-border);
+  color: var(--g-text);
+}
+.md-btn:active {
+  background: var(--g-accent-muted);
+  color: var(--g-accent);
+}
+.md-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.md-toolbar-sep {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--g-border);
+  margin: 0 0.25rem;
+  flex-shrink: 0;
+}
+.md-editor textarea {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  margin-top: 0 !important;
+}
+.md-editor textarea.md-drag {
+  border-color: var(--g-accent);
+  box-shadow: 0 0 0 3px var(--g-accent-muted);
+}
+
 .preview-pane {
   border: 1px solid var(--g-border);
   padding: 0.75rem;

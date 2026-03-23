@@ -3,13 +3,20 @@ import type { EventStore } from '../../../core/events';
 import { commitEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
+import { paginationNav } from '../../../views/shared';
+
+const PAGE_SIZE = 20;
 
 interface MicroPost {
   id: string; body_md: string; body_html: string; status: string; created_at: number;
 }
 
-export function renderMicroIndex(db: Database): JSX.Element {
-  const posts = db.prepare('SELECT * FROM micro_posts ORDER BY created_at DESC').all() as MicroPost[];
+export function renderMicroIndex(db: Database, page = 1): JSX.Element {
+  const total = (db.prepare('SELECT COUNT(*) as n FROM micro_posts').get() as { n: number }).n;
+  const offset = (page - 1) * PAGE_SIZE;
+  const posts = db.prepare(
+    'SELECT * FROM micro_posts ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).all(PAGE_SIZE, offset) as MicroPost[];
 
   const content = (
     <div>
@@ -17,10 +24,11 @@ export function renderMicroIndex(db: Database): JSX.Element {
       <form method="POST" action="/micro">
         <label>
           New micro-post
-          <textarea name="body" rows="4" placeholder="What's on your mind?" required />
+          <textarea name="body" rows="4" placeholder="What's on your mind?" required data-md-editor="mini" />
         </label>
         <button type="submit">Post</button>
       </form>
+      <script src="/static/grip-editor.js" defer />
       <hr />
       {posts.map(p => (
         <article style="margin-bottom:1rem">
@@ -40,6 +48,7 @@ export function renderMicroIndex(db: Database): JSX.Element {
           }
         </article>
       ))}
+      {paginationNav(page, total, PAGE_SIZE, '/micro')}
     </div>
   );
 

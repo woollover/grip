@@ -155,12 +155,22 @@ async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): P
   const url = new URL(inboxUrl);
 
   for (const post of posts) {
-    const note = buildNote(cfg, post);
-    const activity = buildCreateActivity(cfg, note, `${cfg.baseUrl}/activitypub/activities/${ulid()}`);
-    const body = JSON.stringify(activity);
-    const headers: Record<string, string> = { 'Content-Type': 'application/activity+json' };
-    await signRequest({ method: 'POST', url, body, keyId, privateKey: keyPair.privateKey, headers });
-    await fetch(url.toString(), { method: 'POST', headers, body });
+    try {
+      const note = buildNote(cfg, post);
+      const activity = buildCreateActivity(cfg, note, `${cfg.baseUrl}/activitypub/activities/${ulid()}`);
+      const body = JSON.stringify(activity);
+      const headers: Record<string, string> = { 'Content-Type': 'application/activity+json' };
+      await signRequest({ method: 'POST', url, body, keyId, privateKey: keyPair.privateKey, headers });
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      try {
+        await fetch(url.toString(), { method: 'POST', headers, body, signal: ctrl.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    } catch (err) {
+      log.error('[activitypub] Backfill: failed to deliver post', post.id, err);
+    }
   }
 }
 

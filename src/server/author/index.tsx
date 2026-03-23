@@ -67,6 +67,7 @@ import path from "path";
 const SESSION_COOKIE = "grip_session";
 const cv = (cookie: Record<string, { value?: string } | undefined>) =>
   cookie[SESSION_COOKIE]?.value as string | undefined;
+const parsePage = (q: any) => Math.max(1, parseInt(q?.page ?? '1', 10) || 1);
 
 export function createAuthorApp(
   db: Database,
@@ -168,10 +169,11 @@ export function createAuthorApp(
   });
 
   // ── Articles ─────────────────────────────────────────────────────────────────
-  app.get("/articles", ({ cookie }) => {
+  app.get("/articles", ({ cookie, query }) => {
+    const page = parsePage(query);
     return (
       requireAuth(cv(cookie)) ??
-      html(renderArticlesIndex(db))
+      html(renderArticlesIndex(db, page))
     );
   });
 
@@ -239,9 +241,10 @@ export function createAuthorApp(
   });
 
   // ── Micro-posts ───────────────────────────────────────────────────────────────
-  app.get("/micro", ({ cookie }) => {
+  app.get("/micro", ({ cookie, query }) => {
+    const page = parsePage(query);
     return (
-      requireAuth(cv(cookie)) ?? html(renderMicroIndex(db))
+      requireAuth(cv(cookie)) ?? html(renderMicroIndex(db, page))
     );
   });
 
@@ -409,14 +412,14 @@ export function createAuthorApp(
     app.get("/contacts", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-      const page = Math.max(1, parseInt(query.page as string) || 1);
+      const page = parsePage(query);
       return html(renderContactsIndex(db, page));
     });
 
     app.get("/replies", ({ cookie, query }) => {
       const guard = requireAuth(cv(cookie));
       if (guard) return guard;
-      const page = Math.max(1, parseInt(query.page as string) || 1);
+      const page = parsePage(query);
       return html(renderRepliesIndex(db, page));
     });
 
@@ -500,7 +503,7 @@ export function createAuthorApp(
   app.get("/reader", ({ cookie, query }) => {
     const guard = requireAuth(cv(cookie));
     if (guard) return guard;
-    const page = Math.max(1, parseInt(query.page as string) || 1);
+    const page = parsePage(query);
     return html(renderReaderHome(db, page));
   });
 

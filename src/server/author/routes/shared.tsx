@@ -1,4 +1,9 @@
 // Shared author panel UI components
+import type { Database } from 'bun:sqlite';
+
+export function getSiteHost(db: Database): string {
+  return (db.prepare("SELECT value FROM config WHERE key = 'domain'").get() as { value: string } | null)?.value || 'localhost:3000';
+}
 
 export function AlignPicker(): JSX.Element {
   const script = `

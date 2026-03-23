@@ -159,8 +159,49 @@ echo
 info "Installing grip.service…"
 cp "$GRIP_DIR/grip.service" /etc/systemd/system/grip.service
 systemctl daemon-reload
-systemctl enable grip --now 2>/dev/null || systemctl enable grip
-ok "Service installed and enabled (starts automatically on boot)."
+systemctl enable grip
+ok "Service installed and enabled (will start automatically on boot)."
+warn "Not starting yet — the database isn't initialised until you run the setup wizard."
+echo
+
+# ── Step 9: Caddy ─────────────────────────────────────────────────────────────
+hr
+say "${BOLD}Step 9 — Caddy (reverse proxy + TLS)${RESET}"
+hr
+echo
+if command -v caddy &>/dev/null; then
+  ok "Caddy is already installed — skipping."
+else
+  info "Installing Caddy via official apt repository…"
+  apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+    | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+    | tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
+  apt-get update -qq
+  apt-get install -y -qq caddy
+  ok "Caddy installed."
+fi
+echo
+if [[ -f "/etc/caddy/Caddyfile" ]]; then
+  ok "Caddyfile already exists — leaving it untouched."
+else
+  info "Writing Caddyfile to /etc/caddy/Caddyfile…"
+  cat > /etc/caddy/Caddyfile <<'CADDY'
+# GRIP — edit YOUR_DOMAIN to match your actual domain, then:
+#   systemctl restart caddy
+
+YOUR_DOMAIN {
+    reverse_proxy localhost:3000
+}
+
+# Uncomment to expose the author panel at a subdomain:
+# author.YOUR_DOMAIN {
+#     reverse_proxy localhost:4000
+# }
+CADDY
+  ok "Caddyfile written. Edit /etc/caddy/Caddyfile and replace YOUR_DOMAIN with your real domain."
+fi
 echo
 
 # ── Done ──────────────────────────────────────────────────────────────────────
@@ -168,20 +209,20 @@ hr
 echo
 echo -e "  ${BOLD}${GREEN}✨  Installation complete!${RESET}"
 echo
-say "GRIP is installed. One step left before you can start:"
+say "Three steps to go live:"
 echo
-say "  ${BOLD}Run the setup wizard:${RESET}"
-say "  ${CYAN}su - $GRIP_USER -c '$GRIP_DIR/grip setup'${RESET}"
+say "  ${BOLD}1. Run the setup wizard:${RESET}"
+say "     ${CYAN}su - $GRIP_USER -c '$GRIP_DIR/grip setup'${RESET}"
+say "     ${DIM}(sets your domain, site title, passphrase, and initialises the database)${RESET}"
 echo
-say "The wizard will:"
-say "  ${DIM}• Ask for your site title, description and domain${RESET}"
-say "  ${DIM}• Set your author passphrase${RESET}"
-say "  ${DIM}• Initialise the database${RESET}"
+say "  ${BOLD}2. Start GRIP:${RESET}"
+say "     ${CYAN}systemctl start grip${RESET}"
 echo
-say "After the wizard, start GRIP:"
-say "  ${CYAN}systemctl start grip${RESET}"
+say "  ${BOLD}3. Configure Caddy with your domain and restart it:${RESET}"
+say "     ${CYAN}nano /etc/caddy/Caddyfile${RESET}   ${DIM}# replace YOUR_DOMAIN${RESET}"
+say "     ${CYAN}systemctl restart caddy${RESET}"
 echo
-say "Then point Caddy at it (see ${DIM}${GRIP_DIR}/Caddyfile.example${RESET})."
+say "${DIM}Caddy will obtain a TLS certificate from Let's Encrypt automatically.${RESET}"
 echo
 hr
 echo
