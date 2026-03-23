@@ -8,6 +8,7 @@ import { statusCommand } from './commands/status';
 import { exportCommand } from './commands/export';
 import { backupCommand } from './commands/backup';
 import { restoreCommand } from './commands/restore';
+import { updateCommand } from './commands/update';
 
 const [, , command, ...args] = process.argv;
 
@@ -21,6 +22,7 @@ const commands: Record<string, (args: string[]) => Promise<void> | void> = {
   export: exportCommand,
   backup: backupCommand,
   restore: restoreCommand,
+  update: updateCommand,
 };
 
 if (!command || command === '--help' || command === '-h') {
@@ -39,6 +41,7 @@ Commands:
   export [--out dir] Export all content as portable Markdown + media files
   backup [--out f]   Snapshot DB + media into a .tar.gz backup
   restore <file>     Restore from a backup (server must be stopped first)
+  update             Check for and install the latest release
 `);
   process.exit(0);
 }

@@ -65,6 +65,7 @@ import { log } from "../../core/logger";
 import { version as currentVersion } from "../../../package.json";
 import { execSync } from "child_process";
 import path from "path";
+import { checkForUpdate, runUpdate } from "../../cli/commands/update";
 
 const SESSION_COOKIE = "grip_session";
 const cv = (cookie: Record<string, { value?: string } | undefined>) =>
@@ -467,43 +468,16 @@ export function createAuthorApp(
         { headers: { "Content-Type": "text/html; charset=utf-8" } },
       );
     }
-    const installDir = path.dirname(process.execPath);
-    const arch = process.arch === "arm64" ? "arm64" : "x64";
-    const asset = `grip-linux-${arch}.tar.gz`;
 
     try {
-      // Resolve download URL
-      const apiRes = await fetch(
-        "https://api.github.com/repos/woollover/grip/releases/latest",
-        {
-          headers: { "User-Agent": "grip-self-update" },
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
-      if (!apiRes.ok) throw new Error(`GitHub API: ${apiRes.status}`);
-      const release = (await apiRes.json()) as {
-        assets: { name: string; browser_download_url: string }[];
-      };
-      const assetInfo = release.assets.find((a) => a.name === asset);
-      if (!assetInfo) throw new Error(`No release asset found for ${asset}`);
+      const info = await checkForUpdate();
+      if (!info) {
+        return new Response(errorPage(`Already on the latest version (v${currentVersion}).`), {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
 
-      // Download
-      const dlRes = await fetch(assetInfo.browser_download_url, {
-        signal: AbortSignal.timeout(120_000),
-      });
-      if (!dlRes.ok) throw new Error(`Download failed: ${dlRes.status}`);
-
-      const tmpTar = "/tmp/grip-update.tar.gz";
-      const tmpDir = "/tmp/grip-update";
-      await Bun.write(tmpTar, dlRes);
-
-      // Extract and atomically replace binary + static files
-      execSync(`rm -rf ${tmpDir} && mkdir -p ${tmpDir}`);
-      execSync(`tar -xzf ${tmpTar} -C ${tmpDir}`);
-      execSync(`chmod +x ${tmpDir}/grip`);
-      execSync(`mv ${tmpDir}/grip ${installDir}/grip`);
-      execSync(`cp -r ${tmpDir}/public ${installDir}/`);
-      execSync(`rm -rf ${tmpDir} ${tmpTar}`);
+      await runUpdate(info);
 
       // Restart after the response is sent
       setTimeout(() => {
