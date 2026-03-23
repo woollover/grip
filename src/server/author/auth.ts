@@ -2,30 +2,28 @@ import { compare } from 'bcryptjs';
 import { timingSafeEqual } from 'crypto';
 import type { Database } from 'bun:sqlite';
 
-// In-memory rate limiter: ip → { count, lockedUntil }
-const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
-export function isLockedOut(ip: string): boolean {
-  const entry = loginAttempts.get(ip);
-  if (!entry) return false;
-  if (entry.lockedUntil > Date.now()) return true;
-  loginAttempts.delete(ip);
+interface LockoutRow { count: number; locked_until: number }
+
+export function isLockedOut(db: Database, ip: string): boolean {
+  const row = db.prepare('SELECT count, locked_until FROM auth_lockouts WHERE ip = ?').get(ip) as LockoutRow | null;
+  if (!row) return false;
+  if (row.locked_until > Date.now()) return true;
+  db.prepare('DELETE FROM auth_lockouts WHERE ip = ?').run(ip);
   return false;
 }
 
-export function recordFailedAttempt(ip: string): void {
-  const entry = loginAttempts.get(ip) ?? { count: 0, lockedUntil: 0 };
-  entry.count += 1;
-  if (entry.count >= MAX_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOCKOUT_MS;
-  }
-  loginAttempts.set(ip, entry);
+export function recordFailedAttempt(db: Database, ip: string): void {
+  const row = db.prepare('SELECT count, locked_until FROM auth_lockouts WHERE ip = ?').get(ip) as LockoutRow | null;
+  const count = (row?.count ?? 0) + 1;
+  const lockedUntil = count >= MAX_ATTEMPTS ? Date.now() + LOCKOUT_MS : 0;
+  db.prepare('INSERT OR REPLACE INTO auth_lockouts (ip, count, locked_until) VALUES (?, ?, ?)').run(ip, count, lockedUntil);
 }
 
-export function clearAttempts(ip: string): void {
-  loginAttempts.delete(ip);
+export function clearAttempts(db: Database, ip: string): void {
+  db.prepare('DELETE FROM auth_lockouts WHERE ip = ?').run(ip);
 }
 
 export function getSessionToken(db: Database): string | null {

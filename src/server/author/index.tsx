@@ -113,7 +113,7 @@ export function createAuthorApp(
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
     const passphrase = (body as { passphrase?: string }).passphrase ?? "";
 
-    if (isLockedOut(ip)) {
+    if (isLockedOut(db, ip)) {
       return new Response(renderLoginPage(false, true, db), {
         status: 429,
         headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -124,14 +124,14 @@ export function createAuthorApp(
     store.append({ type: "AuthAttempt", success: ok, ip });
 
     if (!ok) {
-      recordFailedAttempt(ip);
+      recordFailedAttempt(db, ip);
       return new Response(renderLoginPage(true, false, db), {
         status: 401,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
-    clearAttempts(ip);
+    clearAttempts(db, ip);
     const token = createSession(db);
 
     return new Response(null, {

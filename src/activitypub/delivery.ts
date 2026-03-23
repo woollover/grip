@@ -53,11 +53,14 @@ export async function deliverNewPost(
         headers,
       });
 
-      const resp = await fetch(url.toString(), {
-        method: 'POST',
-        headers,
-        body,
-      });
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      let resp: Response;
+      try {
+        resp = await fetch(url.toString(), { method: 'POST', headers, body, signal: ctrl.signal });
+      } finally {
+        clearTimeout(t);
+      }
 
       if (!resp.ok) {
         throw new Error(

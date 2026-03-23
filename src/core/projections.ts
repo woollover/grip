@@ -10,23 +10,26 @@ export function renderMd(src: string): string {
 }
 
 export function rebuild(db: Database, events: StoredEvent[]): void {
-  // Drop and recreate projections
-  db.exec(`
-    DELETE FROM articles;
-    DELETE FROM micro_posts;
-    DELETE FROM pages;
-    DELETE FROM media;
-  `);
+  db.transaction(() => {
+    db.exec(`
+      DELETE FROM articles;
+      DELETE FROM micro_posts;
+      DELETE FROM pages;
+      DELETE FROM media;
+    `);
 
-  for (const stored of events) {
-    const event = JSON.parse(stored.payload) as GripEvent;
-    applyEvent(db, event, stored.created_at);
-  }
+    for (const stored of events) {
+      const event = JSON.parse(stored.payload) as GripEvent;
+      applyEvent(db, event, stored.created_at);
+    }
+  })();
 }
 
 export function commitEvent(db: Database, store: EventStore, event: GripEvent): void {
-  store.append(event);
-  applyEvent(db, event, Date.now());
+  db.transaction(() => {
+    store.append(event);
+    applyEvent(db, event, Date.now());
+  })();
 }
 
 export function applyEvent(db: Database, event: GripEvent, createdAt: number): void {

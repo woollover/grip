@@ -139,5 +139,11 @@ function initSchema(db: Database): void {
 
     CREATE UNIQUE INDEX IF NOT EXISTS reader_items_dedup ON reader_items(source_type, source_id, guid);
     CREATE INDEX IF NOT EXISTS reader_items_pub ON reader_items(published_at DESC);
+
+    CREATE TABLE IF NOT EXISTS auth_lockouts (
+      ip           TEXT PRIMARY KEY,
+      count        INTEGER NOT NULL DEFAULT 0,
+      locked_until INTEGER NOT NULL DEFAULT 0
+    ) STRICT;
   `);
 }

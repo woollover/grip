@@ -110,14 +110,12 @@ export async function verifyInboundSignature(
   const sigHeader = request.headers.get('Signature');
   if (!sigHeader) throw new Error('Missing Signature header');
 
-  // Parse Signature header fields
+  // Parse Signature header fields — regex-based to handle commas inside quoted values
   const sigParts: Record<string, string> = {};
-  for (const part of sigHeader.split(',')) {
-    const eq = part.indexOf('=');
-    if (eq === -1) continue;
-    const key = part.slice(0, eq).trim();
-    const val = part.slice(eq + 1).trim().replace(/^"|"$/g, '');
-    sigParts[key] = val;
+  const sigRe = /(\w+)="([^"]*)"/g;
+  let sigMatch: RegExpExecArray | null;
+  while ((sigMatch = sigRe.exec(sigHeader)) !== null) {
+    sigParts[sigMatch[1]] = sigMatch[2];
   }
 
   const { keyId, signature, headers: signedHeaderNames } = sigParts;

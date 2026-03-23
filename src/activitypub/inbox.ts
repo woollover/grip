@@ -3,6 +3,7 @@ import type { ApConfig } from './config';
 import { verifyInboundSignature, signRequest, signGetRequest, isSafeApUrl } from './signatures';
 import { log } from '../core/logger';
 import { buildAcceptActivity, buildNote, buildCreateActivity } from './objects';
+import { sanitizeHtml } from '../core/sanitize';
 import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
@@ -256,7 +257,7 @@ function handleCreateFromFollowed(db: Database, activity: any, actorUri: string)
   if (!isPublic || note.inReplyTo) return;
 
   const url = typeof note.url === 'string' ? note.url : note.id ?? '';
-  const sanitized = (note.content ?? '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  const sanitized = sanitizeHtml(note.content ?? '');
 
   upsertReaderItems(db, 'ap', following.id, [{
     guid: note.id ?? url,
