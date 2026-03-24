@@ -10,7 +10,7 @@ function getCounts(db: Database) {
   const n = (q: string) => (db.prepare(q).get() as CountRow).n;
   return {
     articles: n('SELECT COUNT(*) as n FROM articles'),
-    micro: n('SELECT COUNT(*) as n FROM micro_posts WHERE status = \'active\''),
+    micro: n("SELECT COUNT(*) as n FROM micro_posts WHERE status = 'active'"),
     pages: n('SELECT COUNT(*) as n FROM pages'),
     media: n('SELECT COUNT(*) as n FROM media'),
   };
@@ -18,38 +18,57 @@ function getCounts(db: Database) {
 
 export function renderExportPage(db: Database): JSX.Element {
   const counts = getCounts(db);
+  const total = counts.articles + counts.micro + counts.pages + counts.media;
 
   const content = (
     <div>
-      <h2>Export</h2>
-      <p style="color:var(--g-text-muted);max-width:42rem">
+      <div class="page-hd">
+        <h2>Export</h2>
+      </div>
+
+      <p style="color:var(--g-text-muted);max-width:52ch;margin-bottom:1.75rem;font-size:.88rem">
         Download all your content as portable Markdown files with YAML frontmatter —
-        compatible with any static site generator (Hugo, 11ty, Jekyll, etc.).
-        Your media files are included as-is.
+        compatible with Hugo, Eleventy, Jekyll, and any static site generator.
+        Media files are included as-is.
       </p>
 
-      <table style="width:auto;margin-bottom:1.5rem">
-        <tbody>
-          <tr><td style="padding-right:2rem">Articles</td><td><strong>{counts.articles}</strong></td></tr>
-          <tr><td style="padding-right:2rem">Micro posts</td><td><strong>{counts.micro}</strong></td></tr>
-          <tr><td style="padding-right:2rem">Pages</td><td><strong>{counts.pages}</strong></td></tr>
-          <tr><td style="padding-right:2rem">Media files</td><td><strong>{counts.media}</strong></td></tr>
-        </tbody>
-      </table>
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:2rem">
+        <div class="stat-card">
+          <div class="stat-num">{counts.articles}</div>
+          <div class="stat-label">Articles</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">{counts.micro}</div>
+          <div class="stat-label">Notes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">{counts.pages}</div>
+          <div class="stat-label">Pages</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">{counts.media}</div>
+          <div class="stat-label">Media</div>
+        </div>
+      </div>
 
-      <form method="POST" action="/export/download">
-        <button type="submit">Download export (.tar.gz)</button>
+      <form method="POST" action="/export/download" style="margin-bottom:1.75rem">
+        <button type="submit" class="btn btn-primary">
+          ↓ Download export (.tar.gz)
+        </button>
+        <span style="font-size:.78rem;color:var(--g-text-muted);margin-left:.85rem">
+          {total} item{total !== 1 ? 's' : ''}
+        </span>
       </form>
 
-      <hr style="margin-top:2rem" />
-      <p style="font-size:0.875rem;color:var(--g-text-muted)">
-        You can also export from the CLI:{' '}
-        <code>grip export [--out ./my-export]</code>
-      </p>
+      <div style="border-top:1px solid var(--g-border-faint);padding-top:1.25rem">
+        <p style="font-size:.8rem;color:var(--g-text-muted);margin:0">
+          You can also export from the CLI: <code>grip export [--out ./my-export]</code>
+        </p>
+      </div>
     </div>
   );
 
-  return authorLayout('Export', content, db);
+  return authorLayout('Export', content, db, '/export');
 }
 
 export async function handleExportDownload(db: Database): Promise<Response> {
@@ -64,7 +83,6 @@ export async function handleExportDownload(db: Database): Promise<Response> {
     mkdirSync(exportDir, { recursive: true });
     await runExport(db, exportDir, mediaDir);
 
-    // Build the tarball
     const proc = Bun.spawn(['tar', '-czf', tarPath, '-C', tmpBase, exportDirName], {
       stderr: 'inherit',
     });
@@ -81,7 +99,6 @@ export async function handleExportDownload(db: Database): Promise<Response> {
       },
     });
   } finally {
-    // Clean up temp files regardless of outcome
     try { rmSync(tmpBase, { recursive: true, force: true }); } catch { /* ignore */ }
     try { if (existsSync(tarPath)) rmSync(tarPath); } catch { /* ignore */ }
   }

@@ -49,14 +49,48 @@ export function renderReaderHome(db: Database, page: number): JSX.Element {
   const apSubs = getApFollowing(db);
   const hasAnySub = rssSubs.length > 0 || apSubs.length > 0;
 
-  const content = (
-    <div>
-      <div class="page-hd">
-        <h2>Reader</h2>
-        <div style="display:flex;gap:0.5rem">
-          <a href="/reader/rss" role="button" class="outline secondary">RSS Feeds {rssSubs.length > 0 ? `(${rssSubs.length})` : ''}</a>
-          <a href="/reader/ap" role="button" class="outline secondary">Following {apSubs.length > 0 ? `(${apSubs.length})` : ''}</a>
-        </div>
+  const sidebar = (
+    <div class="reader-sidebar">
+      <div class="reader-sidebar-section">
+        <div class="reader-sidebar-label">All</div>
+        <a href="/reader" class="reader-sidebar-item active">
+          <span>All items</span>
+          {total > 0 && <span class="reader-sidebar-count">{total}</span>}
+        </a>
+      </div>
+      <hr style="margin:.25rem .85rem;border:none;border-top:1px solid var(--g-border-faint)" />
+      <div class="reader-sidebar-section">
+        <div class="reader-sidebar-label">RSS Feeds</div>
+        {rssSubs.map(sub => (
+          <a href="/reader/rss" class="reader-sidebar-item">
+            <span safe>{sub.title || sub.url}</span>
+            {(sub.item_count ?? 0) > 0 && <span class="reader-sidebar-count muted">{sub.item_count}</span>}
+          </a>
+        ))}
+        <a href="/reader/rss" class="reader-sidebar-add">+ Add feed</a>
+      </div>
+      <hr style="margin:.25rem .85rem;border:none;border-top:1px solid var(--g-border-faint)" />
+      <div class="reader-sidebar-section">
+        <div class="reader-sidebar-label">Following</div>
+        {apSubs.map(f => (
+          <a href="/reader/ap" class="reader-sidebar-item">
+            <span safe>@{f.username}@{f.domain}</span>
+            {(f.item_count ?? 0) > 0 && <span class="reader-sidebar-count muted">{f.item_count}</span>}
+          </a>
+        ))}
+        <a href="/reader/ap" class="reader-sidebar-add">+ Follow someone</a>
+      </div>
+    </div>
+  );
+
+  const mainContent = (
+    <div class="reader-main">
+      <div class="reader-toolbar">
+        <span style="color:var(--g-text-muted)">{total} item{total !== 1 ? 's' : ''}</span>
+        <span class="spacer"></span>
+        <a href="/reader/rss" class="btn btn-ghost btn-sm">Manage feeds</a>
+        <span style="color:var(--g-border)">·</span>
+        <a href="/reader/ap" class="btn btn-ghost btn-sm">Manage following</a>
       </div>
 
       {!hasAnySub && (
@@ -75,20 +109,24 @@ export function renderReaderHome(db: Database, page: number): JSX.Element {
         </div>
       )}
 
-      {items.length > 0 && (
-        <>
-          <p style="font-size:0.72rem;color:var(--g-text-muted);margin-bottom:1rem">
-            {total} item{total !== 1 ? 's' : ''} · chronological
-          </p>
-          <div>
-            {items.map(item => <ReaderItemCard item={item} />)}
-          </div>
+      {items.map(item => <ReaderItemCard item={item} />)}
+
+      {total > PAGE_SIZE && (
+        <div style="padding:.85rem 1.25rem">
           {paginationNav(page, total, PAGE_SIZE, '/reader')}
-        </>
+        </div>
       )}
     </div>
   );
-  return authorLayout('Reader', content, db);
+
+  const content = (
+    <div class="reader-layout">
+      {sidebar}
+      {mainContent}
+    </div>
+  );
+
+  return authorLayout('Reader', content, db, '/reader', true);
 }
 
 function ReaderItemCard({ item }: { item: ReaderItem }): JSX.Element {
@@ -97,12 +135,13 @@ function ReaderItemCard({ item }: { item: ReaderItem }): JSX.Element {
   const sourceName = item.source_name ?? (item.source_type === 'rss' ? 'RSS' : 'AP');
 
   return (
-    <div class="reader-item">
-      <div class="reader-item-meta">
+    <div class="reader-item-card">
+      <div class="reader-item-meta-row">
         <span class={`reader-source-badge ${item.source_type}`}>{item.source_type.toUpperCase()}</span>
         <span safe>{sourceName}</span>
-        {item.author && item.author !== sourceName && <span safe>· {item.author}</span>}
-        <span>· {fmtRelative(item.published_at)}</span>
+        {item.author && item.author !== sourceName && <><span>·</span><span safe>{item.author}</span></>}
+        <span>·</span>
+        <span>{fmtRelative(item.published_at)}</span>
       </div>
       {hasTitle && (
         <div class="reader-item-title">
@@ -113,13 +152,13 @@ function ReaderItemCard({ item }: { item: ReaderItem }): JSX.Element {
         </div>
       )}
       {bodyPreview && (
-        <div class="reader-item-body" safe>{bodyPreview}</div>
+        <div class="reader-item-preview" safe>{bodyPreview}</div>
       )}
-      {item.item_url && (
-        <div class="reader-item-actions">
-          <a href={item.item_url} target="_blank" rel="noopener noreferrer">Read →</a>
-        </div>
-      )}
+      <div class="reader-item-actions">
+        {item.item_url && (
+          <a href={item.item_url} target="_blank" rel="noopener noreferrer">Open original ↗</a>
+        )}
+      </div>
     </div>
   );
 }
@@ -133,62 +172,52 @@ export function renderRssIndex(db: Database): JSX.Element {
     <div>
       <div class="page-hd">
         <h2>RSS Feeds</h2>
-        <a href="/reader" role="button" class="outline secondary">← Reader</a>
+        <a href="/reader" class="btn btn-ghost btn-sm">← Reader</a>
       </div>
 
-      <section style="margin-bottom:2rem">
-        <h3>Add feed</h3>
-        <form method="POST" action="/reader/rss" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap">
-          <label style="flex:1;min-width:280px;margin:0">
+      <div style="margin-bottom:2rem">
+        <form method="POST" action="/reader/rss" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+          <label style="flex:1;min-width:240px;margin:0;font-size:.78rem">
             Feed URL
             <input type="url" name="url" placeholder="https://example.com/rss.xml" required />
           </label>
-          <button type="submit">Subscribe</button>
+          <button type="submit" class="btn btn-primary btn-sm">Subscribe</button>
         </form>
-      </section>
+      </div>
 
       {subs.length === 0 && (
-        <p style="color:var(--g-text-muted);font-size:0.85rem">No feeds yet.</p>
+        <p style="color:var(--g-text-muted);font-size:.85rem">No feeds yet.</p>
       )}
 
-      {subs.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Feed</th>
-              <th>Items</th>
-              <th>Last fetched</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {subs.map(sub => (
-              <tr>
-                <td>
-                  <div style="font-weight:500" safe>{sub.title || sub.url}</div>
-                  <div style="font-size:0.72rem;color:var(--g-text-muted)" safe>{sub.url}</div>
-                </td>
-                <td>{sub.item_count ?? 0}</td>
-                <td style="font-size:0.78rem;color:var(--g-text-muted)">
-                  {sub.last_fetched_at ? fmtRelative(sub.last_fetched_at) : '—'}
-                </td>
-                <td style="white-space:nowrap">
-                  <form method="POST" action={`/reader/rss/${sub.id}/refresh`} style="display:inline">
-                    <button type="submit" class="outline secondary" style="margin-right:0.35rem">Refresh</button>
-                  </form>
-                  <form method="POST" action={`/reader/rss/${sub.id}/delete`} style="display:inline"
-                    onsubmit="return confirm('Remove this feed and all its items?')">
-                    <button type="submit" class="outline secondary">Remove</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div>
+        {subs.map(sub => (
+          <div class="article-row">
+            <div style="width:8px;height:8px;border-radius:50%;background:#e0562f;flex-shrink:0;margin-top:.3rem"></div>
+            <div class="article-info">
+              <span class="article-row-title" style="display:block;margin-bottom:.2rem" safe>{sub.title || sub.url}</span>
+              <div class="article-row-meta">
+                <span safe>{sub.url}</span>
+                <span>·</span>
+                <span>{sub.item_count ?? 0} item{(sub.item_count ?? 0) !== 1 ? 's' : ''}</span>
+                <span>·</span>
+                <span>{sub.last_fetched_at ? fmtRelative(sub.last_fetched_at) : 'never fetched'}</span>
+              </div>
+            </div>
+            <div class="article-row-actions">
+              <form method="POST" action={`/reader/rss/${sub.id}/refresh`} style="margin:0">
+                <button type="submit" class="btn btn-outline btn-sm">Refresh</button>
+              </form>
+              <form method="POST" action={`/reader/rss/${sub.id}/delete`} style="margin:0"
+                onsubmit="return confirm('Remove this feed and all its items?')">
+                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+              </form>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
-  return authorLayout('RSS Feeds', content, db);
+  return authorLayout('RSS Feeds', content, db, '/reader');
 }
 
 // ── AP Following ───────────────────────────────────────────────────────────────
@@ -201,77 +230,66 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
     <div>
       <div class="page-hd">
         <h2>Following</h2>
-        <a href="/reader" role="button" class="outline secondary">← Reader</a>
+        <a href="/reader" class="btn btn-ghost btn-sm">← Reader</a>
       </div>
 
       {!apEnabled && (
-        <p style="font-size:0.78rem;color:var(--g-text-muted);margin-bottom:1.5rem;border-left:2px solid var(--g-border-faint);padding-left:0.75rem">
+        <div style="font-size:.78rem;color:var(--g-text-muted);margin-bottom:1.5rem;border-left:2px solid var(--g-border-faint);padding-left:.85rem">
           ActivityPub is not configured. You can still read public streams via outbox polling.
-          To send formal Follow requests and receive posts via push delivery, enable ActivityPub in <code>grip.toml</code>.
-        </p>
+          To enable formal follows, add <code>[activitypub]</code> to <code>grip.toml</code> and restart.
+        </div>
       )}
 
-      <section style="margin-bottom:2rem">
-        <h3>Follow a profile</h3>
-        <form method="POST" action="/reader/ap" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap">
-          <label style="flex:1;min-width:280px;margin:0">
+      <div style="margin-bottom:2rem">
+        <form method="POST" action="/reader/ap" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+          <label style="flex:1;min-width:240px;margin:0;font-size:.78rem">
             Actor URL or handle
             <input type="text" name="actor" placeholder="@user@mastodon.social or https://…/actor" required />
           </label>
-          <button type="submit">{apEnabled ? 'Follow' : 'Add (read-only)'}</button>
+          <button type="submit" class="btn btn-primary btn-sm">{apEnabled ? 'Follow' : 'Add (read-only)'}</button>
         </form>
-      </section>
+      </div>
 
       {following.length === 0 && (
-        <p style="color:var(--g-text-muted);font-size:0.85rem">Not following anyone yet.</p>
+        <p style="color:var(--g-text-muted);font-size:.85rem">Not following anyone yet.</p>
       )}
 
-      {following.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Profile</th>
-              <th>Status</th>
-              <th>Follows you</th>
-              <th>Items</th>
-              <th>Last fetched</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {following.map(f => (
-              <tr>
-                <td>
-                  <div style="font-weight:500" safe>{f.display_name || f.username}</div>
-                  <div style="font-size:0.72rem;color:var(--g-text-muted)" safe>@{f.username}@{f.domain}</div>
-                </td>
-                <td>
-                  <span class={`follow-state ${f.follow_state}`} safe>{f.follow_state}</span>
-                </td>
-                <td style="text-align:center">
-                  {f.follows_us ? '✓' : '—'}
-                </td>
-                <td>{f.item_count ?? 0}</td>
-                <td style="font-size:0.78rem;color:var(--g-text-muted)">
-                  {f.last_fetched_at ? fmtRelative(f.last_fetched_at) : '—'}
-                </td>
-                <td style="white-space:nowrap">
-                  <form method="POST" action={`/reader/ap/${f.id}/refresh`} style="display:inline">
-                    <button type="submit" class="outline secondary" style="margin-right:0.35rem">Refresh</button>
-                  </form>
-                  <form method="POST" action={`/reader/ap/${f.id}/unfollow`} style="display:inline"
-                    onsubmit={`return confirm("Unfollow and remove all cached posts?")`}>
-                    <button type="submit" class="outline secondary">Unfollow</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div>
+        {following.map(f => (
+          <div class="article-row">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--g-accent-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.78rem;font-weight:700;color:var(--g-accent)">
+              {(f.display_name || f.username).slice(0, 1).toUpperCase()}
+            </div>
+            <div class="article-info">
+              <span class="article-row-title" style="display:block;margin-bottom:.2rem" safe>
+                {f.display_name || f.username}
+              </span>
+              <div class="article-row-meta">
+                <span safe>@{f.username}@{f.domain}</span>
+                <span>·</span>
+                <span class={`follow-state ${f.follow_state}`} safe>{f.follow_state}</span>
+                {f.follows_us && <><span>·</span><span style="color:var(--g-success);font-size:.68rem">follows you</span></>}
+                <span>·</span>
+                <span>{f.item_count ?? 0} item{(f.item_count ?? 0) !== 1 ? 's' : ''}</span>
+                <span>·</span>
+                <span>{f.last_fetched_at ? fmtRelative(f.last_fetched_at) : 'never fetched'}</span>
+              </div>
+            </div>
+            <div class="article-row-actions">
+              <form method="POST" action={`/reader/ap/${f.id}/refresh`} style="margin:0">
+                <button type="submit" class="btn btn-outline btn-sm">Refresh</button>
+              </form>
+              <form method="POST" action={`/reader/ap/${f.id}/unfollow`} style="margin:0"
+                onsubmit="return confirm('Unfollow and remove all cached posts?')">
+                <button type="submit" class="btn btn-ghost btn-sm">Unfollow</button>
+              </form>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
-  return authorLayout('Following', content, db);
+  return authorLayout('Following', content, db, '/reader');
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────────────

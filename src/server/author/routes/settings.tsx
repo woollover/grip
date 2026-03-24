@@ -104,9 +104,7 @@ export function renderSettings(db: Database): JSX.Element {
             Active
           </span>
         </h3>
-        <a href="/contacts" role="button" class="outline secondary">
-          Contacts →
-        </a>
+        <a href="/contacts" class="btn btn-ghost btn-sm">Contacts →</a>
       </div>
       <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0 0 0.4rem">
         Federated as <strong safe>{`@${ap.username}@${ap.domain}`}</strong> ·{" "}
@@ -138,7 +136,9 @@ accept_replies = true`}</pre>
 
   const content = (
     <div>
-      <h2 style="margin-bottom:1.5rem">Settings</h2>
+      <div class="page-hd">
+        <h2>Settings</h2>
+      </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:start">
         {/* Left — Site identity */}
@@ -146,9 +146,7 @@ accept_replies = true`}</pre>
           <form method="POST" action="/settings/site">
             <div class="page-hd" style="margin-bottom:1rem">
               <h3>Site identity</h3>
-              <button type="submit" class="outline">
-                Save
-              </button>
+              <button type="submit" class="btn btn-outline btn-sm">Save</button>
             </div>
             <label>
               Site title
@@ -193,9 +191,7 @@ accept_replies = true`}</pre>
           <section>
             <div class="page-hd">
               <h3>Theme</h3>
-              <a href="/settings/theme" role="button" class="outline secondary">
-                Customize →
-              </a>
+              <a href="/settings/theme" class="btn btn-ghost btn-sm">Customize →</a>
             </div>
             <p style="color:var(--g-text-muted);font-size:0.78rem;margin:0">
               Fonts, colours, and visual style.
@@ -208,9 +204,7 @@ accept_replies = true`}</pre>
             <form method="POST" action="/settings/publicity">
               <div class="page-hd" style="margin-bottom:0.75rem">
                 <h3>Publicity</h3>
-                <button type="submit" class="outline">
-                  Save
-                </button>
+                <button type="submit" class="btn btn-outline btn-sm">Save</button>
               </div>
               <label>
                 Visibility
@@ -271,7 +265,7 @@ accept_replies = true`}</pre>
             <div class="page-hd" style="margin-bottom:0.5rem">
               <h3>Updates</h3>
               <button
-                class="outline secondary"
+                class="btn btn-ghost btn-sm"
                 hx-get="/update-check"
                 hx-target="#update-result"
                 hx-swap="innerHTML"
@@ -293,7 +287,7 @@ accept_replies = true`}</pre>
     </div>
   );
 
-  return authorLayout("Settings", content, db);
+  return authorLayout("Settings", content, db, '/settings');
 }
 
 // ── Theme editor ──────────────────────────────────────────────────────────────
@@ -720,14 +714,10 @@ export function renderThemeSettings(db: Database): JSX.Element {
     <div>
       <div class="page-hd" style="margin-bottom:1.25rem">
         <div style="display:flex;align-items:center;gap:0.75rem">
-          <a href="/settings" class="outline secondary" role="button">
-            ← Back
-          </a>
+          <a href="/settings" class="btn btn-ghost btn-sm">← Back</a>
           <h2 style="margin:0">Theme</h2>
         </div>
-        <button type="submit" form="theme-form">
-          Save theme
-        </button>
+        <button type="submit" form="theme-form" class="btn btn-primary btn-sm">Save theme</button>
       </div>
 
       <div style="display:grid;grid-template-columns:240px 1fr;gap:2rem;align-items:start">
@@ -889,17 +879,8 @@ export function renderThemeSettings(db: Database): JSX.Element {
           </label>
 
           <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
-            <button type="submit" style="flex:1">
-              Save theme
-            </button>
-            <button
-              type="button"
-              onclick="scramble()"
-              style="flex:1;background:var(--g-surface);color:var(--g-text);border-color:var(--g-border)"
-              class="outline secondary"
-            >
-              🎲 Scramble
-            </button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Save theme</button>
+            <button type="button" onclick="scramble()" class="btn btn-outline" style="flex:1">🎲 Scramble</button>
           </div>
         </form>
 
@@ -913,7 +894,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
     </div>
   );
 
-  return authorLayout("Theme", content, db);
+  return authorLayout("Theme", content, db, '/settings');
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────

@@ -82,3 +82,4 @@ coverage/
 !.claude/agent-memory/.gitkeep
 .claude/
 .vscode/
+.gstack/

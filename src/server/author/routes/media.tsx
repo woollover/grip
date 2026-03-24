@@ -4,6 +4,7 @@ import { applyEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { mkdirSync } from 'fs';
 import { authorLayout } from './layout';
+import { esc } from '../../../views/shared';
 
 const ALLOWED_MIME: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -17,49 +18,164 @@ function deriveMimeType(filename: string): string {
   return ALLOWED_MIME[ext] ?? '';
 }
 
-interface MediaFile {
-  id: string; filename: string; mime_type: string; path: string;
-  alt_text: string | null; tags: string; uploaded_at: number;
+function mimeEmoji(mimeType: string): string {
+  if (mimeType.startsWith('image/')) return '🖼️';
+  if (mimeType === 'application/pdf') return '📄';
+  if (mimeType.startsWith('audio/')) return '🎵';
+  if (mimeType.startsWith('video/')) return '🎬';
+  if (mimeType.startsWith('text/')) return '📝';
+  return '📎';
 }
 
-export function renderMediaIndex(db: Database): JSX.Element {
-  const files = db.prepare('SELECT * FROM media ORDER BY uploaded_at DESC').all() as MediaFile[];
+
+interface MediaFile {
+  id: string; filename: string; mime_type: string; path: string;
+  alt_text: string | null; tags: string; uploaded_at: number; size?: number;
+}
+
+type MediaFilter = 'all' | 'images' | 'docs' | 'other';
+
+export function renderMediaIndex(db: Database, filter: MediaFilter = 'all'): JSX.Element {
+  let files: MediaFile[];
+  const allFiles = db.prepare('SELECT * FROM media ORDER BY uploaded_at DESC').all() as MediaFile[];
+
+  if (filter === 'images') {
+    files = allFiles.filter(f => f.mime_type.startsWith('image/'));
+  } else if (filter === 'docs') {
+    files = allFiles.filter(f => f.mime_type === 'application/pdf' || f.mime_type.startsWith('text/'));
+  } else if (filter === 'other') {
+    files = allFiles.filter(f => !f.mime_type.startsWith('image/') && f.mime_type !== 'application/pdf' && !f.mime_type.startsWith('text/'));
+  } else {
+    files = allFiles;
+  }
+
+  const totalCount = allFiles.length;
+  const imgCount = allFiles.filter(f => f.mime_type.startsWith('image/')).length;
+  const docCount = allFiles.filter(f => f.mime_type === 'application/pdf' || f.mime_type.startsWith('text/')).length;
+  const otherCount = allFiles.filter(f => !f.mime_type.startsWith('image/') && f.mime_type !== 'application/pdf' && !f.mime_type.startsWith('text/')).length;
+
+  function filterBtn(f: MediaFilter, label: string): JSX.Element {
+    return (
+      <a href={`/media?filter=${f}`} class={`filter-btn${filter === f ? ' active' : ''}`} style="text-decoration:none">{label}</a>
+    );
+  }
 
   const content = (
     <div>
-      <h2>Media</h2>
-      <form method="POST" action="/media" enctype="multipart/form-data">
-        <label>Upload file <input type="file" name="file" required /></label>
-        <label>Alt text <input type="text" name="altText" placeholder="Describe the file" /></label>
-        <button type="submit">Upload</button>
-      </form>
-      <hr />
-      <div class="grid">
-        {files.map(f => (
-          <figure>
-            {f.mime_type.startsWith('image/')
-              ? <img src={`/media/${f.id}`} alt={f.alt_text ?? ''} style="max-width:100%" />
-              : <p><a href={`/media/${f.id}`}>{f.filename}</a></p>
-            }
-            <figcaption>
-              <code>{f.filename}</code><br />
-              <small>{f.mime_type} · {new Date(f.uploaded_at).toLocaleDateString()}</small>
-            </figcaption>
-          </figure>
-        ))}
+      <div class="page-hd">
+        <h2>Media</h2>
+        <label class="btn btn-primary btn-sm" style="cursor:pointer">
+          ↑ Upload file
+          <input type="file" id="media-upload-input" style="display:none" accept="image/*,application/pdf,audio/*,video/*,text/plain" />
+        </label>
       </div>
+
+      <div class="media-drop-zone" id="media-drop-zone">
+        <span style="font-size:1.8rem;display:block;margin-bottom:.4rem">📂</span>
+        Drop files here to upload — or click <strong>↑ Upload file</strong><br />
+        <span style="font-size:.72rem">Images, PDFs, audio, video · Max 50 MB</span>
+      </div>
+
+      <div class="filter-row">
+        <span style="color:var(--g-text-muted)">{totalCount} file{totalCount !== 1 ? 's' : ''}</span>
+        <span style="color:var(--g-border)">·</span>
+        {filterBtn('all', 'All')}
+        {filterBtn('images', `Images${imgCount > 0 ? ` (${imgCount})` : ''}`)}
+        {filterBtn('docs', `Documents${docCount > 0 ? ` (${docCount})` : ''}`)}
+        {filterBtn('other', `Other${otherCount > 0 ? ` (${otherCount})` : ''}`)}
+      </div>
+
+      {/* Hidden upload form */}
+      <form method="POST" action="/media" enctype="multipart/form-data" id="media-upload-form" style="display:none">
+        <input type="file" name="file" id="media-file-field" />
+        <input type="text" name="altText" id="media-alt-field" />
+      </form>
+
+      {files.length === 0 && (
+        <p style="color:var(--g-text-muted);font-size:.88rem">No files found.</p>
+      )}
+
+      <div class="media-grid">
+        {files.map(f => {
+          const isImage = f.mime_type.startsWith('image/');
+          const dateStr = new Date(f.uploaded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          return (
+            <div class="media-card">
+              <div class="media-thumb">
+                {isImage
+                  ? <img src={`/media/${f.id}`} alt={esc(f.alt_text || f.filename)} />
+                  : <span style="font-size:2rem">{mimeEmoji(f.mime_type)}</span>
+                }
+              </div>
+              <div class="media-card-info">
+                <div class="media-card-name" title={esc(f.filename)}>{esc(f.filename)}</div>
+                <div class="media-card-sub">{esc(f.mime_type)} · {dateStr}</div>
+                <button
+                  class="media-copy-btn"
+                  type="button"
+                  onclick={`navigator.clipboard.writeText('/media/${esc(f.id)}').then(function(){this.textContent='✓ Copied';setTimeout(function(){document.querySelectorAll('.media-copy-btn').forEach(function(b){b.textContent='📋 Copy URL'})},1500)}.bind(this))`}
+                >📋 Copy URL</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <script>{`
+        (function() {
+          var dropZone = document.getElementById('media-drop-zone');
+          var fileInput = document.getElementById('media-upload-input');
+          var form = document.getElementById('media-upload-form');
+          var fileField = document.getElementById('media-file-field');
+
+          function uploadFile(file) {
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('altText', file.name.replace(/\\.[^.]+$/, ''));
+            fetch('/media', { method: 'POST', body: fd })
+              .then(function() { window.location.reload(); })
+              .catch(function(e) { alert('Upload failed: ' + e.message); });
+          }
+
+          if (fileInput) {
+            fileInput.addEventListener('change', function() {
+              if (this.files[0]) uploadFile(this.files[0]);
+            });
+          }
+
+          if (dropZone) {
+            dropZone.addEventListener('click', function() { if (fileInput) fileInput.click(); });
+            dropZone.addEventListener('dragover', function(e) {
+              e.preventDefault();
+              this.style.borderColor = 'var(--g-accent)';
+              this.style.background = 'var(--g-accent-muted)';
+            });
+            dropZone.addEventListener('dragleave', function() {
+              this.style.borderColor = '';
+              this.style.background = '';
+            });
+            dropZone.addEventListener('drop', function(e) {
+              e.preventDefault();
+              this.style.borderColor = '';
+              this.style.background = '';
+              var files = e.dataTransfer && e.dataTransfer.files;
+              if (files && files[0]) uploadFile(files[0]);
+            });
+          }
+        })();
+      `}</script>
     </div>
   );
 
-  return authorLayout('Media', content, db);
+  return authorLayout('Media', content, db, '/media');
 }
 
 export function editorImageWidget(): JSX.Element {
   const script = `
 (function() {
-  const btn      = document.getElementById('insert-image-btn');
-  const input    = document.getElementById('image-file-input');
-  const textarea = document.querySelector('textarea[name="body"]');
+  var btn      = document.getElementById('insert-image-btn');
+  var input    = document.getElementById('image-file-input');
+  var textarea = document.querySelector('textarea[name="body"]');
   btn.addEventListener('click', () => input.click());
   input.addEventListener('change', async () => {
     const file = input.files[0];
@@ -96,14 +212,14 @@ export function editorImageWidget(): JSX.Element {
 `;
 
   return (
-    <div style="margin-bottom:0.5rem">
-      <button type="button" id="insert-image-btn" class="outline"
-        style="padding:0.3rem 0.8rem;font-size:0.875rem">
+    <span>
+      <button type="button" id="insert-image-btn" class="btn btn-ghost btn-sm"
+        style="font-size:.72rem">
         📎 Insert image
       </button>
       <input type="file" id="image-file-input" accept="image/*" style="display:none" />
       <script>{script}</script>
-    </div>
+    </span>
   );
 }
 

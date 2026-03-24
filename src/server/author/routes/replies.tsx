@@ -1,8 +1,12 @@
 import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
-import { paginationNav } from '../../../views/shared';
+import { paginationNav, esc } from '../../../views/shared';
 
 const PAGE_SIZE = 20;
+
+function fmtDate(ms: number): string {
+  return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export function renderContactsIndex(db: Database, page = 1): JSX.Element {
   const total = (db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number }).cnt;
@@ -12,36 +16,56 @@ export function renderContactsIndex(db: Database, page = 1): JSX.Element {
     .prepare('SELECT actor_uri, inbox_url, followed_at FROM ap_followers ORDER BY followed_at DESC LIMIT ? OFFSET ?')
     .all(PAGE_SIZE, offset) as { actor_uri: string; inbox_url: string; followed_at: number }[];
 
+  function handleToDisplay(uri: string): string {
+    try {
+      const u = new URL(uri);
+      const parts = u.pathname.replace(/^\/users?\//, '').replace(/^\//, '');
+      return `@${parts}@${u.hostname}`;
+    } catch {
+      return uri;
+    }
+  }
+
   const content = (
     <div>
       <div class="page-hd">
-        <h2 style="margin:0">Contacts</h2>
-        <small style="color:var(--g-text-muted)">{total} contact{total !== 1 ? 's' : ''}</small>
+        <h2>Contacts</h2>
+        <span style="font-size:.78rem;color:var(--g-text-muted)">{total} follower{total !== 1 ? 's' : ''}</span>
       </div>
-      {followers.length === 0
-        ? <p style="color:var(--g-text-muted)">No contacts yet.</p>
-        : (
-          <table>
-            <thead>
-              <tr><th>Actor</th><th>Inbox</th><th>Since</th></tr>
-            </thead>
-            <tbody>
-              {followers.map(f => (
-                <tr>
-                  <td><a href={f.actor_uri} target="_blank" rel="noopener noreferrer" safe>{f.actor_uri}</a></td>
-                  <td><small safe>{f.inbox_url}</small></td>
-                  <td><small>{new Date(f.followed_at).toISOString().slice(0, 10)}</small></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )
-      }
+
+      {total === 0 && (
+        <div style="color:var(--g-text-muted);font-size:.88rem;padding:1.5rem 0">
+          <p style="margin:0 0 .5rem">No one is following you yet.</p>
+          <p style="margin:0;font-size:.8rem">Once ActivityPub is enabled and people follow you from the fediverse, they'll appear here.</p>
+        </div>
+      )}
+
+      <div>
+        {followers.map(f => {
+          const handle = handleToDisplay(f.actor_uri);
+          return (
+            <div class="article-row">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--g-accent-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.78rem;font-weight:700;color:var(--g-accent)">
+                {handle.slice(1, 2).toUpperCase()}
+              </div>
+              <div class="article-info">
+                <a class="article-row-title" href={f.actor_uri} target="_blank" rel="noopener noreferrer" safe>{handle}</a>
+                <div class="article-row-meta">
+                  <span>Following since {fmtDate(f.followed_at)}</span>
+                  <span>·</span>
+                  <a href={f.actor_uri} target="_blank" rel="noopener noreferrer" style="font-size:.7rem;color:var(--g-text-muted)" safe>{f.actor_uri}</a>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {paginationNav(page, total, PAGE_SIZE, '/contacts')}
     </div>
   );
 
-  return authorLayout('Contacts', content, db);
+  return authorLayout('Contacts', content, db, '/contacts');
 }
 
 export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
@@ -65,55 +89,48 @@ export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
   const content = (
     <div>
       <div class="page-hd">
-        <h2 style="margin:0">Replies</h2>
-        <small style="color:var(--g-text-muted)">{total} total</small>
+        <h2>Replies</h2>
+        <span style="font-size:.78rem;color:var(--g-text-muted)">{total} total</span>
       </div>
-      {replies.length === 0
-        ? <p style="color:var(--g-text-muted)">No replies yet.</p>
-        : (
-          <table>
-            <thead>
-              <tr>
-                <th>Post</th><th>Author</th><th>Content</th>
-                <th>Date</th><th>Status</th><th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {replies.map(r => {
-                const truncated = r.content.length > 100 ? r.content.slice(0, 100) + '…' : r.content;
-                return (
-                  <tr>
-                    <td><code>{r.note_id.slice(0, 8)}</code></td>
-                    <td>
-                      <a href={r.actor_uri} rel="noopener noreferrer" target="_blank" safe>
-                        {r.actor_name}
-                      </a>
-                    </td>
-                    <td safe>{truncated}</td>
-                    <td><small>{new Date(r.published_at).toISOString().slice(0, 10)}</small></td>
-                    <td>{r.status}</td>
-                    <td>
-                      <form method="POST"
-                        action={`/replies/${encodeURIComponent(r.id)}/toggle`}
-                        style="margin:0">
-                        {r.status === 'visible'
-                          ? <button class="outline secondary" style="padding:0.2rem 0.6rem">Hide</button>
-                          : <button class="outline" style="padding:0.2rem 0.6rem">Show</button>
-                        }
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )
-      }
+
+      {total === 0 && (
+        <div style="color:var(--g-text-muted);font-size:.88rem;padding:1.5rem 0">
+          <p style="margin:0">No replies yet.</p>
+        </div>
+      )}
+
+      <div>
+        {replies.map(r => (
+          <div class={`note-stream-item${r.status === 'hidden' ? '' : ''}`} style={r.status === 'hidden' ? 'opacity:.45' : ''}>
+            <div class="note-stream-meta" style="justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <a href={r.actor_uri} target="_blank" rel="noopener noreferrer" safe>{r.actor_name || r.actor_uri}</a>
+                <span>·</span>
+                <span>{fmtDate(r.published_at)}</span>
+                <span>·</span>
+                <span>in reply to <code style="font-size:.68rem">{r.note_id.slice(0, 8)}…</code></span>
+              </div>
+              {r.status === 'hidden' && (
+                <span style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--g-text-muted);border:1px solid var(--g-border);border-radius:2px;padding:.05rem .35rem">hidden</span>
+              )}
+            </div>
+            <div class="note-body" style="margin-top:.25rem" safe>{r.content}</div>
+            <div class="note-stream-actions" style="margin-top:.4rem">
+              <form method="POST" action={`/replies/${encodeURIComponent(r.id)}/toggle`} style="margin:0">
+                <button type="submit" style={`color:${r.status === 'visible' ? 'var(--g-text-muted)' : 'var(--g-accent)'}`}>
+                  {r.status === 'visible' ? 'Hide' : 'Show'}
+                </button>
+              </form>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {paginationNav(page, total, PAGE_SIZE, '/replies')}
     </div>
   );
 
-  return authorLayout('Replies', content, db);
+  return authorLayout('Replies', content, db, '/replies');
 }
 
 export function handleReplyToggle(db: Database, id: string): void {

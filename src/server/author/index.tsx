@@ -174,9 +174,10 @@ export function createAuthorApp(
   // ── Articles ─────────────────────────────────────────────────────────────────
   app.get("/articles", ({ cookie, query }) => {
     const page = parsePage(query);
+    const status = (['all','published','draft','unpublished'] as const).find(s => s === (query as any)?.status) ?? 'all';
     return (
       requireAuth(cv(cookie)) ??
-      html(renderArticlesIndex(db, page))
+      html(renderArticlesIndex(db, page, status))
     );
   });
 
@@ -338,9 +339,10 @@ export function createAuthorApp(
   });
 
   // ── Media ─────────────────────────────────────────────────────────────────────
-  app.get("/media", ({ cookie }) => {
+  app.get("/media", ({ cookie, query }) => {
+    const filter = (['all','images','docs','other'] as const).find(f => f === (query as any)?.filter) ?? 'all';
     return (
-      requireAuth(cv(cookie)) ?? html(renderMediaIndex(db))
+      requireAuth(cv(cookie)) ?? html(renderMediaIndex(db, filter))
     );
   });
 

@@ -99,17 +99,22 @@ export function renderArticle(db: Database, slug: string, siteTitle: string): JS
 
   const content = (
     <article>
-      <h1 style="margin-top:0;margin-bottom:0.5rem">{esc(article.title)}</h1>
-      <div class="article-meta">
-        {article.published_at ? <span>{fmtDate(article.published_at)}</span> : ''}
-        {tags.map(t => (
-          <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag">{esc(t)}</a>
-        ))}
+      <div class="article-back">
+        <a href="/articles">← Articles</a>
+        {tags.length > 0 && (
+          <div class="article-tags">
+            {tags.map(t => (
+              <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag">{esc(t)}</a>
+            ))}
+          </div>
+        )}
       </div>
+      <h1 class="article-title">{esc(article.title)}</h1>
+      {article.published_at ? <span class="article-date">{fmtDate(article.published_at)}</span> : ''}
       <div class="prose">{article.body_html}</div>
-      <p style="margin-top:2.5rem;font-size:0.875rem;border-top:1px solid var(--g-border-faint);padding-top:1.25rem">
+      <div class="article-footer">
         <a href="/articles">← All articles</a>
-      </p>
+      </div>
     </article>
   );
 
