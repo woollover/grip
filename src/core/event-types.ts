@@ -26,4 +26,4 @@ export type GripEvent =
   | { type: 'AuthAttempt';        success: boolean; ip: string }
 
   // Site configuration — identity changes are meaningful acts, recorded as history
-  | { type: 'SiteConfigUpdated'; title?: string; description?: string; domain?: string }
+  | { type: 'SiteConfigUpdated'; title?: string; description?: string; domain?: string; homeIntro?: string }

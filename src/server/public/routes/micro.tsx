@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import type { ApConfig } from '../../../activitypub/config';
-import { fmtDate, paginationNav } from '../../../views/shared';
+import { fmtDate, paginationNav, esc } from '../../../views/shared';
 
 interface MicroPost {
   id: string; body_html: string; status: string; created_at: number;
@@ -25,10 +25,10 @@ function renderReplies(db: Database, noteId: string): JSX.Element {
       {replies.map(r => (
         <div style="margin-bottom:0.75rem">
           <small style="color:var(--g-text-muted)">
-            <a href={r.actor_uri} rel="noopener noreferrer" target="_blank" safe>{r.actor_name}</a>
+            <a href={r.actor_uri} rel="noopener noreferrer" target="_blank">{esc(r.actor_name)}</a>
             {' · '}{new Date(r.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </small>
-          <div style="margin-top:0.25rem;font-size:0.9rem" safe>{r.content}</div>
+          <div style="margin-top:0.25rem;font-size:0.9rem">{r.content}</div>
         </div>
       ))}
     </section>
@@ -57,7 +57,11 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
       <ul class="note-stream">
         {posts.map(p => (
           <li id={p.id}>
-            <div class="note-meta">{fmtDate(p.created_at)}</div>
+            <div class="note-meta">
+              <a href={`/micro/${p.id}`} style="color:inherit;text-decoration:none" title="Permalink">
+                {fmtDate(p.created_at)}
+              </a>
+            </div>
             <div class="note-body">{p.body_html}</div>
             {showReplies ? renderReplies(db, p.id) : ''}
           </li>
@@ -67,5 +71,32 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
     </div>
   );
 
-  return publicLayout({ title: 'Notes', siteTitle, db }, content);
+  return publicLayout({ title: 'Notes', siteTitle, db, activePath: '/micro' }, content);
+}
+
+export function renderMicroPost(db: Database, id: string, siteTitle: string, apCfg?: ApConfig | null): JSX.Element | null {
+  const post = db.prepare(`
+    SELECT * FROM micro_posts WHERE id = ? AND status = 'active'
+  `).get(id) as MicroPost | null;
+
+  if (!post) return null;
+
+  const showReplies = apCfg?.acceptReplies === true;
+
+  const content = (
+    <div>
+      <p style="margin-top:0;font-size:0.8rem;color:var(--g-text-muted)">
+        <a href="/micro">← All notes</a>
+        {' · '}
+        <span>{fmtDate(post.created_at)}</span>
+      </p>
+      <div class="note-body" style="font-size:1.05rem">{post.body_html}</div>
+      {showReplies ? renderReplies(db, post.id) : ''}
+    </div>
+  );
+
+  return publicLayout(
+    { title: 'Note', siteTitle, db, hideSidebar: true, activePath: '/micro' },
+    content,
+  );
 }

@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
-import { fmtDate } from '../../../views/shared';
+import { fmtDate, readPublicity, esc } from '../../../views/shared';
 
 interface Article {
   slug: string; title: string; published_at: number;
@@ -13,17 +13,17 @@ interface MicroPost {
 export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
   const get = (key: string, def: string) =>
     (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)?.value ?? def;
-  const isPrivate = get('publicity_mode', 'public') === 'private';
-  const showArticles = !isPrivate && get('show_articles', '1') === '1';
-  const showMicro    = !isPrivate && get('show_micro',    '1') === '1';
 
-  const articles = showArticles ? db.prepare(`
+  const pub = readPublicity(db);
+  const homeIntro = get('home_intro', '');
+
+  const articles = pub.showArticles ? db.prepare(`
     SELECT slug, title, published_at
     FROM articles WHERE status = 'published'
     ORDER BY published_at DESC LIMIT 8
   `).all() as Article[] : [];
 
-  const microPosts = showMicro ? db.prepare(`
+  const microPosts = pub.showMicro ? db.prepare(`
     SELECT id, body_html, created_at
     FROM micro_posts WHERE status = 'active'
     ORDER BY created_at DESC LIMIT 5
@@ -31,6 +31,12 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
 
   const content = (
     <div>
+      {homeIntro && (
+        <div class="home-intro">
+          <p>{esc(homeIntro)}</p>
+        </div>
+      )}
+
       {articles.length > 0 && (
         <section>
           <p class="section-label">Articles</p>
@@ -39,7 +45,7 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
               <li>
                 <span class="post-date">{fmtDate(a.published_at)}</span>
                 <span class="post-title">
-                  <a href={`/articles/${a.slug}`}>{a.title}</a>
+                  <a href={`/articles/${a.slug}`}>{esc(a.title)}</a>
                 </span>
               </li>
             ))}
@@ -54,7 +60,11 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
           <ul class="note-stream">
             {microPosts.map(p => (
               <li>
-                <div class="note-meta">{fmtDate(p.created_at)}</div>
+                <div class="note-meta">
+                  <a href={`/micro/${p.id}`} style="color:inherit;text-decoration:none">
+                    {fmtDate(p.created_at)}
+                  </a>
+                </div>
                 <div class="note-body">{p.body_html}</div>
               </li>
             ))}
@@ -63,11 +73,11 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
         </section>
       )}
 
-      {articles.length === 0 && microPosts.length === 0 && (
+      {articles.length === 0 && microPosts.length === 0 && !homeIntro && (
         <p style="color:var(--g-text-muted)">Nothing published yet.</p>
       )}
     </div>
   );
 
-  return publicLayout({ title: 'Home', siteTitle, description: siteDescription, db }, content);
+  return publicLayout({ title: 'Home', siteTitle, description: siteDescription, db, activePath: '/' }, content);
 }

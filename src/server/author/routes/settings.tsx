@@ -14,6 +14,7 @@ function getConfig(db: Database): {
   title: string;
   description: string;
   domain: string;
+  homeIntro: string;
 } {
   const get = (key: string, fallback: string) => {
     const row = db
@@ -25,6 +26,7 @@ function getConfig(db: Database): {
     title: get("site_title", "My GRIP"),
     description: get("site_description", ""),
     domain: get("domain", "localhost"),
+    homeIntro: get("home_intro", ""),
   };
 }
 
@@ -173,6 +175,15 @@ accept_replies = true`}</pre>
                 value={config.domain}
                 placeholder="example.com"
               />
+            </label>
+            <label>
+              Home page intro{" "}
+              <small style="font-weight:normal;opacity:0.7">— shown above content on the home page</small>
+              <textarea
+                name="homeIntro"
+                rows="3"
+                placeholder="A sentence or two about yourself or this space…"
+              >{config.homeIntro}</textarea>
             </label>
           </form>
         </section>
@@ -379,7 +390,7 @@ function KitchenSink(): JSX.Element {
       </div>
       <label style="margin-top:0.5rem;margin-bottom:0;display:block">
         Textarea
-        <textarea rows={2} placeholder="Some text…" style="margin-top:0.2rem" />
+        <textarea rows="2" placeholder="Some text…" style="margin-top:0.2rem" />
       </label>
 
       {/* Code block */}
@@ -910,13 +921,14 @@ export function renderThemeSettings(db: Database): JSX.Element {
 export function handleSiteConfigUpdate(
   db: Database,
   store: EventStore,
-  body: { title?: string; description?: string; domain?: string },
+  body: { title?: string; description?: string; domain?: string; homeIntro?: string },
 ): void {
   const event = {
     type: "SiteConfigUpdated" as const,
     title: body.title?.trim(),
     description: body.description?.trim(),
     domain: body.domain?.trim(),
+    homeIntro: body.homeIntro?.trim(),
   };
   commitEvent(db, store, event);
 }

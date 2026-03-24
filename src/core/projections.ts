@@ -1,9 +1,20 @@
 import type { Database } from 'bun:sqlite';
 import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js';
 import type { GripEvent } from './event-types';
 import type { StoredEvent, EventStore } from './events';
 
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight(str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try { return hljs.highlight(str, { language: lang }).value; } catch {}
+    }
+    return '';
+  },
+});
 
 export function renderMd(src: string): string {
   return md.render(src);
@@ -136,12 +147,12 @@ export function applyEvent(db: Database, event: GripEvent, createdAt: number): v
       break;
     }
     case 'SiteConfigUpdated': {
-      if (event.title !== undefined)
-        db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('site_title', event.title);
-      if (event.description !== undefined)
-        db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('site_description', event.description);
-      if (event.domain !== undefined)
-        db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('domain', event.domain);
+      const setConfig = (k: string, v: string) =>
+        db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(k, v);
+      if (event.title !== undefined) setConfig('site_title', event.title);
+      if (event.description !== undefined) setConfig('site_description', event.description);
+      if (event.domain !== undefined) setConfig('domain', event.domain);
+      if (event.homeIntro !== undefined) setConfig('home_intro', event.homeIntro);
       break;
     }
   }
