@@ -950,7 +950,7 @@ export function handleThemeChange(
   const custom: ThemeCustom = {};
   // colorScheme is derived from the preset, not user-editable directly
   if (body.fontBody?.trim()) custom.fontBody = body.fontBody.trim();
-  if (body.fontHeading?.trim()) custom.fontHeading = body.fontHeading.trim();
+  custom.fontHeading = body.fontHeading?.trim() ?? "";
   if (body.fontMono?.trim()) custom.fontMono = body.fontMono.trim();
   if (isHexColor(body.colorAccent)) custom.colorAccent = body.colorAccent!;
   if (isHexColor(body.colorBg)) custom.colorBg = body.colorBg!;
