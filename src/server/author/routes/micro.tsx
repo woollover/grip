@@ -4,12 +4,9 @@ import { commitEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { paginationNav, fmtDate, esc } from '../../../views/shared';
+import { listMicroPostsAdmin } from '../../data/micro';
 
 const PAGE_SIZE = 20;
-
-interface MicroPost {
-  id: string; body_md: string; body_html: string; status: string; created_at: number;
-}
 
 function fmtRelative(ms: number): string {
   const diff = Date.now() - ms;
@@ -24,11 +21,7 @@ function fmtRelative(ms: number): string {
 }
 
 export function renderMicroIndex(db: Database, page = 1): JSX.Element {
-  const total = (db.prepare('SELECT COUNT(*) as n FROM micro_posts').get() as { n: number }).n;
-  const offset = (page - 1) * PAGE_SIZE;
-  const posts = db.prepare(
-    'SELECT * FROM micro_posts ORDER BY created_at DESC LIMIT ? OFFSET ?'
-  ).all(PAGE_SIZE, offset) as MicroPost[];
+  const { posts, total } = listMicroPostsAdmin(db, { page, pageSize: PAGE_SIZE });
 
   const content = (
     <div>

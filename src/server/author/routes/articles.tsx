@@ -5,7 +5,8 @@ import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { paginationNav, fmtDate, esc } from '../../../views/shared';
-import { getSiteHost } from './shared';
+import { countArticlesByStatus, listArticlesAdmin, getArticleById } from '../../data/articles';
+import { getSiteConfig } from '../../data/config';
 import { editorImageWidget } from './media';
 
 const PAGE_SIZE = 20;
@@ -53,33 +54,18 @@ const EDITOR_SCRIPT = `(function(){
   if(ta)ta.addEventListener('keydown',function(e){if(e.ctrlKey||e.metaKey){if(e.key==='b'){e.preventDefault();window._edFmt.bold();}if(e.key==='i'){e.preventDefault();window._edFmt.italic();}if(e.key==='k'){e.preventDefault();window._edFmt.link();}}});
 })();`;
 
-interface Article {
-  id: string; slug: string; title: string; body_md: string;
-  tags: string; status: string; created_at: number; updated_at: number; published_at: number | null;
-}
-
 type StatusFilter = 'all' | 'published' | 'draft' | 'unpublished';
 
 export function renderArticlesIndex(db: Database, page = 1, statusFilter: StatusFilter = 'all'): JSX.Element {
-  // Count per status
-  const countAll       = (db.prepare('SELECT COUNT(*) as n FROM articles').get() as { n: number }).n;
-  const countPublished = (db.prepare("SELECT COUNT(*) as n FROM articles WHERE status = 'published'").get() as { n: number }).n;
-  const countDraft     = (db.prepare("SELECT COUNT(*) as n FROM articles WHERE status = 'draft'").get() as { n: number }).n;
-  const countUnpub     = (db.prepare("SELECT COUNT(*) as n FROM articles WHERE status = 'unpublished'").get() as { n: number }).n;
+  const counts = countArticlesByStatus(db);
+  const { countAll, countPublished, countDraft, countUnpub } = {
+    countAll: counts.all,
+    countPublished: counts.published,
+    countDraft: counts.draft,
+    countUnpub: counts.unpublished,
+  };
 
-  let total: number;
-  let articles: Article[];
-  const offset = (page - 1) * PAGE_SIZE;
-
-  if (statusFilter === 'all') {
-    total = countAll;
-    articles = db.prepare('SELECT * FROM articles ORDER BY updated_at DESC LIMIT ? OFFSET ?').all(PAGE_SIZE, offset) as Article[];
-  } else {
-    total = statusFilter === 'published' ? countPublished : statusFilter === 'draft' ? countDraft : countUnpub;
-    articles = db.prepare(
-      'SELECT * FROM articles WHERE status = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?'
-    ).all(statusFilter, PAGE_SIZE, offset) as Article[];
-  }
+  const { articles, total } = listArticlesAdmin(db, { page, status: statusFilter, pageSize: PAGE_SIZE });
 
   function tabLink(filter: StatusFilter, label: string, count: number): JSX.Element {
     const isActive = statusFilter === filter;
@@ -116,7 +102,6 @@ export function renderArticlesIndex(db: Database, page = 1, statusFilter: Status
 
       <div>
         {articles.map(a => {
-          const tags: string[] = (() => { try { return JSON.parse(a.tags); } catch { return []; } })();
           const dateLabel = a.published_at ? fmtDate(a.published_at) : fmtDate(a.updated_at);
           return (
             <div class="article-row">
@@ -125,8 +110,8 @@ export function renderArticlesIndex(db: Database, page = 1, statusFilter: Status
                 <a class="article-row-title" href={`/articles/${a.id}/edit`}>{esc(a.title)}</a>
                 <div class="article-row-meta">
                   <span>{dateLabel}</span>
-                  {tags.length > 0 && <span>·</span>}
-                  {tags.map(t => (
+                  {a.tags.length > 0 && <span>·</span>}
+                  {a.tags.map(t => (
                     <a href={`/articles?tag=${encodeURIComponent(t)}`} class="tag" style="font-size:.68rem">{esc(t)}</a>
                   ))}
                   {a.status !== 'published' && (
@@ -235,10 +220,9 @@ export function handleArticleCreate(
 }
 
 export function renderArticleEdit(db: Database, id: string): JSX.Element {
-  const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(id) as Article | null;
+  const article = getArticleById(db, id);
   if (!article) return authorLayout('Not found', <p>Article not found.</p>, db, '/articles');
-  const siteHost = getSiteHost(db);
-  const tags: string[] = (() => { try { return JSON.parse(article.tags); } catch { return []; } })();
+  const siteHost = getSiteConfig(db).domain;
 
   const content = (
     <div class="editor-shell">
@@ -274,7 +258,7 @@ export function renderArticleEdit(db: Database, id: string): JSX.Element {
           <input
             type="text"
             name="tags"
-            value={tags.join(', ')}
+            value={article.tags.join(', ')}
             placeholder="tag1, tag2…"
             class="editor-meta-input"
           />

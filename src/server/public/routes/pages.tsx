@@ -1,16 +1,9 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
-
-interface Page {
-  id: string; slug: string; title: string; body_html: string;
-  status: string; created_at: number; updated_at: number;
-}
+import { getPage } from '../../data/pages';
 
 export function renderPage(db: Database, slug: string, siteTitle: string): JSX.Element | null {
-  const page = db.prepare(`
-    SELECT * FROM pages WHERE slug = ? AND status = 'published'
-  `).get(slug) as Page | null;
-
+  const page = getPage(db, slug);
   if (!page) return null;
 
   const content = (

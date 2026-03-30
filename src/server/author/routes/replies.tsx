@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 import { paginationNav, esc } from '../../../views/shared';
+import { countFollowers, listFollowers, countReplies, listReplies } from '../../data/activity';
 
 const PAGE_SIZE = 20;
 
@@ -9,12 +10,8 @@ function fmtDate(ms: number): string {
 }
 
 export function renderContactsIndex(db: Database, page = 1): JSX.Element {
-  const total = (db.prepare('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number }).cnt;
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const followers = db
-    .prepare('SELECT actor_uri, inbox_url, followed_at FROM ap_followers ORDER BY followed_at DESC LIMIT ? OFFSET ?')
-    .all(PAGE_SIZE, offset) as { actor_uri: string; inbox_url: string; followed_at: number }[];
+  const total = countFollowers(db);
+  const followers = listFollowers(db, { page, pageSize: PAGE_SIZE });
 
   function handleToDisplay(uri: string): string {
     try {
@@ -69,22 +66,8 @@ export function renderContactsIndex(db: Database, page = 1): JSX.Element {
 }
 
 export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
-  const total = (db.prepare('SELECT COUNT(*) as cnt FROM ap_replies').get() as { cnt: number }).cnt;
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const replies = db
-    .prepare(
-      'SELECT id, note_id, actor_uri, actor_name, content, published_at, status FROM ap_replies ORDER BY published_at DESC LIMIT ? OFFSET ?',
-    )
-    .all(PAGE_SIZE, offset) as {
-    id: string;
-    note_id: string;
-    actor_uri: string;
-    actor_name: string;
-    content: string;
-    published_at: number;
-    status: string;
-  }[];
+  const total = countReplies(db);
+  const replies = listReplies(db, { page, pageSize: PAGE_SIZE });
 
   const content = (
     <div>

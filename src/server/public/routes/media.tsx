@@ -1,13 +1,9 @@
 import type { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
-
-interface MediaFile {
-  id: string; filename: string; mime_type: string; path: string;
-  alt_text: string | null; uploaded_at: number;
-}
+import { getMediaById } from '../../data/media';
 
 export function serveMedia(db: Database, id: string): Response | null {
-  const file = db.prepare('SELECT * FROM media WHERE id = ?').get(id) as MediaFile | null;
+  const file = getMediaById(db, id);
   if (!file) return null;
 
   try {

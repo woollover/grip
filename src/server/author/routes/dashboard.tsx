@@ -1,6 +1,9 @@
 import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
+import { getDashboardStats, getRecentEvents, type EventRow } from '../../data/dashboard';
+import { getArticleById } from '../../data/articles';
+import { getMicroPostById } from '../../data/micro';
 
 function fmtRelative(ms: number): string {
   const diff = Date.now() - ms;
@@ -42,25 +45,11 @@ function greeting(): string {
 }
 
 export function renderDashboard(db: Database): JSX.Element {
-  const articleCount = (db.prepare('SELECT COUNT(*) as n FROM articles').get() as { n: number }).n;
-  const publishedCount = (db.prepare("SELECT COUNT(*) as n FROM articles WHERE status = 'published'").get() as { n: number }).n;
-  const draftCount = (db.prepare("SELECT COUNT(*) as n FROM articles WHERE status = 'draft'").get() as { n: number }).n;
-
-  const microCount = (db.prepare('SELECT COUNT(*) as n FROM micro_posts').get() as { n: number }).n;
-  const microActiveCount = (db.prepare("SELECT COUNT(*) as n FROM micro_posts WHERE status = 'active'").get() as { n: number }).n;
+  const stats = getDashboardStats(db);
+  const { articleCount, publishedCount, draftCount, microCount, microActiveCount,
+          pageCount, pagePublishedCount, mediaCount, imageCount } = stats;
   const microRetractedCount = microCount - microActiveCount;
-
-  const pageCount = (db.prepare('SELECT COUNT(*) as n FROM pages').get() as { n: number }).n;
-  const pagePublishedCount = (db.prepare("SELECT COUNT(*) as n FROM pages WHERE status = 'published'").get() as { n: number }).n;
-
-  const mediaCount = (db.prepare('SELECT COUNT(*) as n FROM media').get() as { n: number }).n;
-  const imageCount = (db.prepare("SELECT COUNT(*) as n FROM media WHERE mime_type LIKE 'image/%'").get() as { n: number }).n;
-
-  // Recent events with description enrichment
-  interface EventRow { id: string; type: string; created_at: number; payload: string; }
-  const recentEvents = db.prepare(
-    'SELECT id, type, created_at, payload FROM events ORDER BY id DESC LIMIT 10'
-  ).all() as EventRow[];
+  const recentEvents = getRecentEvents(db, 10);
 
   function eventDescription(e: EventRow): JSX.Element {
     try {
@@ -74,8 +63,8 @@ export function renderDashboard(db: Database): JSX.Element {
           if (title) return <span>"{esc(title)}" <em>— article</em></span>;
           const id = (p.id as string | undefined) || '';
           if (id) {
-            const row = db.prepare('SELECT title FROM articles WHERE id = ?').get(id) as { title: string } | null;
-            if (row?.title) return <span>"{esc(row.title)}" <em>— article</em></span>;
+            const article = getArticleById(db, id);
+            if (article?.title) return <span>"{esc(article.title)}" <em>— article</em></span>;
           }
           return <span><em>article</em></span>;
         }
@@ -87,8 +76,8 @@ export function renderDashboard(db: Database): JSX.Element {
         case 'MicroPostRetracted':
         case 'MicroPostRestored': {
           const id = (p.id as string | undefined) || '';
-          const row = id ? db.prepare('SELECT body_md FROM micro_posts WHERE id = ?').get(id) as { body_md: string } | null : null;
-          const snippet = row?.body_md?.slice(0, 50) || '';
+          const post = id ? getMicroPostById(db, id) : null;
+          const snippet = post?.body_md?.slice(0, 50) || '';
           return snippet ? <span>"{esc(snippet)}…" <em>— note</em></span> : <em>note</em>;
         }
         case 'MediaUploaded': {

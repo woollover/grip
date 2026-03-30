@@ -5,6 +5,7 @@ import { ulid } from 'ulidx';
 import { mkdirSync } from 'fs';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
+import { listAllMedia, type MediaFile } from '../../data/media';
 
 const ALLOWED_MIME: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -28,16 +29,11 @@ function mimeEmoji(mimeType: string): string {
 }
 
 
-interface MediaFile {
-  id: string; filename: string; mime_type: string; path: string;
-  alt_text: string | null; tags: string; uploaded_at: number; size?: number;
-}
-
 type MediaFilter = 'all' | 'images' | 'docs' | 'other';
 
 export function renderMediaIndex(db: Database, filter: MediaFilter = 'all'): JSX.Element {
   let files: MediaFile[];
-  const allFiles = db.prepare('SELECT * FROM media ORDER BY uploaded_at DESC').all() as MediaFile[];
+  const allFiles = listAllMedia(db);
 
   if (filter === 'images') {
     files = allFiles.filter(f => f.mime_type.startsWith('image/'));

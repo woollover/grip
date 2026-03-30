@@ -6,7 +6,9 @@ import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
 import { editorImageWidget } from './media';
-import { AlignPicker, getSiteHost } from './shared';
+import { AlignPicker } from './shared';
+import { listPagesAdmin, getPageById } from '../../data/pages';
+import { getSiteConfig } from '../../data/config';
 
 const EDITOR_SCRIPT = `(function(){
   var ta=document.querySelector('textarea[name="body"]');
@@ -24,13 +26,8 @@ const EDITOR_SCRIPT = `(function(){
   });
 })();`;
 
-interface Page {
-  id: string; slug: string; title: string; body_md: string;
-  body_html: string; status: string; created_at: number; updated_at: number;
-}
-
 export function renderPagesIndex(db: Database): JSX.Element {
-  const pages = db.prepare('SELECT * FROM pages ORDER BY updated_at DESC').all() as Page[];
+  const pages = listPagesAdmin(db);
 
   function statusDot(status: string): JSX.Element {
     if (status === 'published') return <span class="sdot sdot-pub" />;
@@ -169,9 +166,9 @@ export function handlePageCreate(
 }
 
 export function renderPageEdit(db: Database, id: string): JSX.Element {
-  const page = db.prepare('SELECT * FROM pages WHERE id = ?').get(id) as Page | null;
+  const page = getPageById(db, id);
   if (!page) return authorLayout('Not found', <p>Page not found.</p>, db, '/pages');
-  const siteHost = getSiteHost(db);
+  const siteHost = getSiteConfig(db).domain;
 
   const content = (
     <div class="editor-shell">

@@ -3,21 +3,16 @@ import { mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { authorLayout } from './layout';
 import { runExport } from '../../../cli/commands/export';
-
-interface CountRow { n: number }
-
-function getCounts(db: Database) {
-  const n = (q: string) => (db.prepare(q).get() as CountRow).n;
-  return {
-    articles: n('SELECT COUNT(*) as n FROM articles'),
-    micro: n("SELECT COUNT(*) as n FROM micro_posts WHERE status = 'active'"),
-    pages: n('SELECT COUNT(*) as n FROM pages'),
-    media: n('SELECT COUNT(*) as n FROM media'),
-  };
-}
+import { getDashboardStats } from '../../data/dashboard';
 
 export function renderExportPage(db: Database): JSX.Element {
-  const counts = getCounts(db);
+  const stats = getDashboardStats(db);
+  const counts = {
+    articles: stats.articleCount,
+    micro: stats.microActiveCount,
+    pages: stats.pageCount,
+    media: stats.mediaCount,
+  };
   const total = counts.articles + counts.micro + counts.pages + counts.media;
 
   const content = (

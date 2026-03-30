@@ -1,39 +1,26 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
-import { fmtDate, readPublicity, esc } from '../../../views/shared';
-
-interface Article {
-  slug: string; title: string; published_at: number;
-}
-
-interface MicroPost {
-  id: string; body_html: string; created_at: number;
-}
+import { fmtDate, esc } from '../../../views/shared';
+import { getSiteConfig } from '../../data/config';
+import { listArticles } from '../../data/articles';
+import { listMicroPosts } from '../../data/micro';
 
 export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
-  const get = (key: string, def: string) =>
-    (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)?.value ?? def;
+  const site = getSiteConfig(db);
 
-  const pub = readPublicity(db);
-  const homeIntro = get('home_intro', '');
+  const articles = site.showArticles
+    ? listArticles(db, { pageSize: 8 }).articles
+    : [];
 
-  const articles = pub.showArticles ? db.prepare(`
-    SELECT slug, title, published_at
-    FROM articles WHERE status = 'published'
-    ORDER BY published_at DESC LIMIT 8
-  `).all() as Article[] : [];
-
-  const microPosts = pub.showMicro ? db.prepare(`
-    SELECT id, body_html, created_at
-    FROM micro_posts WHERE status = 'active'
-    ORDER BY created_at DESC LIMIT 5
-  `).all() as MicroPost[] : [];
+  const microPosts = site.showMicro
+    ? listMicroPosts(db, { pageSize: 5 }).posts
+    : [];
 
   const content = (
     <div>
-      {homeIntro && (
+      {site.homeIntro && (
         <div class="home-intro">
-          <p>{esc(homeIntro)}</p>
+          <p>{esc(site.homeIntro)}</p>
         </div>
       )}
 
@@ -43,7 +30,7 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
           <ul class="post-list">
             {articles.map(a => (
               <li>
-                <span class="post-date">{fmtDate(a.published_at)}</span>
+                <span class="post-date">{a.date}</span>
                 <span class="post-title">
                   <a href={`/articles/${a.slug}`}>{esc(a.title)}</a>
                 </span>
@@ -62,7 +49,7 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
               <li>
                 <div class="note-meta">
                   <a href={`/micro/${p.id}`} style="color:inherit;text-decoration:none">
-                    {fmtDate(p.created_at)}
+                    {p.date}
                   </a>
                 </div>
                 <div class="note-body">{p.body_html}</div>
@@ -73,7 +60,7 @@ export function renderHome(db: Database, siteTitle: string, siteDescription: str
         </section>
       )}
 
-      {articles.length === 0 && microPosts.length === 0 && !homeIntro && (
+      {articles.length === 0 && microPosts.length === 0 && !site.homeIntro && (
         <p style="color:var(--g-text-muted)">Nothing published yet.</p>
       )}
     </div>

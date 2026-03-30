@@ -1,23 +1,14 @@
 import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import type { ApConfig } from '../../../activitypub/config';
-import { fmtDate, paginationNav, esc } from '../../../views/shared';
+import { paginationNav, esc } from '../../../views/shared';
+import { listMicroPosts, getMicroPost } from '../../data/micro';
+import { listRepliesByNote } from '../../data/activity';
 
-interface MicroPost {
-  id: string; body_html: string; status: string; created_at: number;
-}
-
-interface ReplyRow {
-  id: string; actor_uri: string; actor_name: string; content: string; published_at: number;
-}
+const PAGE_SIZE = 20;
 
 function renderReplies(db: Database, noteId: string): JSX.Element {
-  const replies = db.prepare(`
-    SELECT id, actor_uri, actor_name, content, published_at
-    FROM ap_replies WHERE note_id = ? AND status = 'visible'
-    ORDER BY published_at ASC
-  `).all(noteId) as ReplyRow[];
-
+  const replies = listRepliesByNote(db, noteId);
   if (replies.length === 0) return '' as unknown as JSX.Element;
 
   return (
@@ -35,19 +26,8 @@ function renderReplies(db: Database, noteId: string): JSX.Element {
   );
 }
 
-const PAGE_SIZE = 20;
-
 export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfig | null, page = 1): JSX.Element {
-  const total = (db.prepare(
-    "SELECT COUNT(*) as n FROM micro_posts WHERE status = 'active'"
-  ).get() as { n: number }).n;
-
-  const posts = db.prepare(`
-    SELECT * FROM micro_posts WHERE status = 'active'
-    ORDER BY created_at DESC
-    LIMIT ? OFFSET ?
-  `).all(PAGE_SIZE, (page - 1) * PAGE_SIZE) as MicroPost[];
-
+  const { posts, total } = listMicroPosts(db, { page, pageSize: PAGE_SIZE });
   const showReplies = apCfg?.acceptReplies === true;
 
   const content = (
@@ -59,7 +39,7 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
           <li id={p.id}>
             <div class="note-meta">
               <a href={`/micro/${p.id}`} style="color:inherit;text-decoration:none" title="Permalink">
-                {fmtDate(p.created_at)}
+                {p.date}
               </a>
             </div>
             <div class="note-body">{p.body_html}</div>
@@ -75,10 +55,7 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
 }
 
 export function renderMicroPost(db: Database, id: string, siteTitle: string, apCfg?: ApConfig | null): JSX.Element | null {
-  const post = db.prepare(`
-    SELECT * FROM micro_posts WHERE id = ? AND status = 'active'
-  `).get(id) as MicroPost | null;
-
+  const post = getMicroPost(db, id);
   if (!post) return null;
 
   const showReplies = apCfg?.acceptReplies === true;
@@ -88,7 +65,7 @@ export function renderMicroPost(db: Database, id: string, siteTitle: string, apC
       <p style="margin-top:0;font-size:0.8rem;color:var(--g-text-muted)">
         <a href="/micro">← All notes</a>
         {' · '}
-        <span>{fmtDate(post.created_at)}</span>
+        <span>{post.date}</span>
       </p>
       <div class="note-body" style="font-size:1.05rem">{post.body_html}</div>
       {showReplies ? renderReplies(db, post.id) : ''}
