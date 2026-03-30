@@ -63,7 +63,7 @@ export async function getKeyPair(db: Database): Promise<{ privateKey: CryptoKey;
   if (!row) throw new Error('No key pair found — call ensureKeyPair first');
 
   const privateDer = unwrapPem(row.private_pem);
-  const privateKey = await crypto.subtle.importKey('pkcs8', privateDer, ALGO, false, ['sign']);
+  const privateKey = await crypto.subtle.importKey('pkcs8', privateDer as unknown as ArrayBuffer, ALGO, false, ['sign']);
 
   _cached = { privateKey, publicKeyPem: row.public_pem };
   return _cached;

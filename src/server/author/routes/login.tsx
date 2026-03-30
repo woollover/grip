@@ -5,7 +5,7 @@ export function renderLoginPage(
   badPassword: boolean,
   lockedOut: boolean,
   db?: Database,
-): JSX.Element {
+): string {
   const scheme = db ? getColorScheme(db) : "light";
   const siteTitle = db
     ? ((
@@ -57,5 +57,5 @@ export function renderLoginPage(
       </body>
     </html>
   );
-  return ("<!DOCTYPE html>" + page) as unknown as JSX.Element;
+  return "<!DOCTYPE html>" + page;
 }

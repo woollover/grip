@@ -68,7 +68,7 @@ import path from "path";
 import { checkForUpdate, runUpdate } from "../../cli/commands/update";
 
 const SESSION_COOKIE = "grip_session";
-const cv = (cookie: Record<string, { value?: string } | undefined>) =>
+const cv = (cookie: Record<string, { value?: unknown } | undefined>) =>
   cookie[SESSION_COOKIE]?.value as string | undefined;
 const parsePage = (q: any) => Math.max(1, parseInt(q?.page ?? '1', 10) || 1);
 
@@ -623,7 +623,7 @@ export function createAuthorApp(
 }
 
 function html(content: JSX.Element): Response {
-  return new Response(content, {
+  return new Response(content as unknown as string, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "X-Frame-Options": "DENY",

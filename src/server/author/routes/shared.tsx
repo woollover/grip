@@ -19,11 +19,11 @@ export function AlignPicker(): JSX.Element {
     }
   `;
   return (
-    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
-      <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('left')">← Left</button>
-      <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('center')">Center</button>
-      <button type="button" class="outline secondary" style="padding:0.2rem 0.6rem" onclick="setImgAlign('right')">Right →</button>
+    <>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="setImgAlign('left')">← L</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="setImgAlign('center')">C</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="setImgAlign('right')">R →</button>
       <script>{script}</script>
-    </div>
+    </>
   );
 }

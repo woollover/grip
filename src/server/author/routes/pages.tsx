@@ -8,6 +8,22 @@ import { esc } from '../../../views/shared';
 import { editorImageWidget } from './media';
 import { AlignPicker, getSiteHost } from './shared';
 
+const EDITOR_SCRIPT = `(function(){
+  var ta=document.querySelector('textarea[name="body"]');
+  var wc=document.getElementById('word-count');
+  if(ta&&wc){
+    function upd(){var w=ta.value.trim()?ta.value.trim().split(/\\s+/).length:0;wc.textContent=w.toLocaleString()+' word'+(w!==1?'s':'');}
+    ta.addEventListener('input',upd);upd();
+  }
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+      e.preventDefault();
+      var f=document.querySelector('.editor-shell form');
+      if(f)f.requestSubmit();
+    }
+  });
+})();`;
+
 interface Page {
   id: string; slug: string; title: string; body_md: string;
   body_html: string; status: string; created_at: number; updated_at: number;
@@ -70,17 +86,15 @@ export function renderPageNew(db: Database): JSX.Element {
     <div class="editor-shell">
       <div class="editor-topbar">
         <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span style="color:var(--g-border)">›</span>
-        <a href="/pages" style="font-size:.78rem;color:var(--g-text-muted);text-decoration:none">Pages</a>
-        <span style="color:var(--g-border)">›</span>
-        <span class="editor-title-pill" id="editor-title-display">New page</span>
-        <div class="editor-spacer"></div>
-        <button type="submit" form="page-form" class="btn btn-outline btn-sm">Save draft</button>
+        <span class="editor-topbar-sep">›</span>
+        <a href="/pages" class="editor-topbar-crumb">Pages</a>
+        <div class="editor-spacer" />
+        <button type="submit" form="page-form" class="btn btn-primary btn-sm">Save draft</button>
         <a href="/pages" class="btn btn-ghost btn-sm">Cancel</a>
       </div>
 
       <form id="page-form" method="POST" action="/pages">
-        <div class="editor-metabar">
+        <div class="editor-titlebar">
           <input
             class="editor-title-input"
             type="text"
@@ -88,26 +102,23 @@ export function renderPageNew(db: Database): JSX.Element {
             placeholder="Page title…"
             required
             autofocus
-            id="page-title"
-            oninput="document.getElementById('editor-title-display').textContent = this.value || 'New page'"
           />
-          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
-            <span style="font-size:.7rem;color:var(--g-text-muted)">Slug:</span>
-            <input
-              type="text"
-              name="slug"
-              id="page-slug"
-              placeholder="auto-generated"
-              class="tags-input"
-            />
-          </div>
+        </div>
+        <div class="editor-metabar">
+          <span class="editor-meta-label">Slug</span>
+          <input
+            type="text"
+            name="slug"
+            placeholder="auto-generated from title"
+            class="editor-meta-input"
+          />
         </div>
 
         <div class="editor-split">
           <div class="editor-pane">
             <div class="editor-pane-header">
               <span>Markdown</span>
-              <div style="display:flex;gap:.5rem;align-items:center;font-weight:400;letter-spacing:0;text-transform:none">
+              <div class="editor-pane-tools">
                 <AlignPicker />
                 {editorImageWidget()}
               </div>
@@ -127,30 +138,19 @@ export function renderPageNew(db: Database): JSX.Element {
           <div class="editor-pane">
             <div class="editor-pane-header"><span>Preview</span></div>
             <div class="editor-pane-body editor-preview" id="preview">
-              <em style="color:var(--g-text-muted);font-size:.85rem">Preview will appear here…</em>
+              <p class="editor-preview-empty">Preview appears as you write…</p>
             </div>
           </div>
         </div>
 
         <div class="editor-footerbar">
-          <span>New page</span>
-          <span class="sep">·</span>
           <span id="word-count">0 words</span>
-          <div style="flex:1"></div>
-          <span>Status: <strong>draft</strong></span>
+          <div class="editor-footerbar-spacer" />
+          <span class="editor-footerbar-hint">Ctrl+S to save</span>
         </div>
       </form>
       <script src="/static/grip-editor.js" defer />
-      <script>{`
-        (function() {
-          var ta = document.querySelector('textarea[name="body"]');
-          var wc = document.getElementById('word-count');
-          if (ta && wc) {
-            function updateWC() { var w = ta.value.trim() ? ta.value.trim().split(/\\s+/).length : 0; wc.textContent = w + ' word' + (w !== 1 ? 's' : ''); }
-            ta.addEventListener('input', updateWC);
-          }
-        })();
-      `}</script>
+      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
 
@@ -173,59 +173,49 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
   if (!page) return authorLayout('Not found', <p>Page not found.</p>, db, '/pages');
   const siteHost = getSiteHost(db);
 
-  const statusDotStyle = page.status === 'published'
-    ? 'background:var(--g-success)'
-    : 'background:transparent;border:1.5px solid var(--g-text-muted)';
-
   const content = (
     <div class="editor-shell">
       <div class="editor-topbar">
         <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span style="color:var(--g-border)">›</span>
-        <a href="/pages" style="font-size:.78rem;color:var(--g-text-muted);text-decoration:none">Pages</a>
-        <span style="color:var(--g-border)">›</span>
-        <span class="editor-title-pill" id="editor-title-display">{esc(page.title)}</span>
-        <div class="editor-spacer"></div>
-        <span class="editor-status-pill">
-          <span style={`width:6px;height:6px;border-radius:50%;display:inline-block;${statusDotStyle}`}></span>
-          {page.status}
-        </span>
+        <span class="editor-topbar-sep">›</span>
+        <a href="/pages" class="editor-topbar-crumb">Pages</a>
+        <div class="editor-spacer" />
+        <span class={`editor-status-pill status-${page.status}`}>{page.status}</span>
         <button type="submit" form="page-form" class="btn btn-outline btn-sm">Save</button>
         {page.status !== 'published' && (
-          <button type="submit" form="publish-form" class="btn btn-primary btn-sm">Publish →</button>
+          <button type="submit" form="publish-form" class="btn btn-primary btn-sm">Publish</button>
         )}
         {page.status === 'published' && (
-          <a href={`//${siteHost}/p/${esc(page.slug)}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View →</a>
+          <a href={`//${siteHost}/p/${esc(page.slug)}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View ↗</a>
         )}
       </div>
 
       <form id="page-form" method="POST" action={`/pages/${id}/revise`}>
-        <div class="editor-metabar">
+        <div class="editor-titlebar">
           <input
             class="editor-title-input"
             type="text"
             name="title"
             value={esc(page.title)}
             required
-            id="page-title"
-            oninput="document.getElementById('editor-title-display').textContent = this.value || 'Untitled'"
+            autofocus
           />
-          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
-            <span style="font-size:.7rem;color:var(--g-text-muted)">Slug:</span>
-            <input
-              type="text"
-              name="slug"
-              value={esc(page.slug)}
-              class="tags-input"
-            />
-          </div>
+        </div>
+        <div class="editor-metabar">
+          <span class="editor-meta-label">Slug</span>
+          <input
+            type="text"
+            name="slug"
+            value={esc(page.slug)}
+            class="editor-meta-input"
+          />
         </div>
 
         <div class="editor-split">
           <div class="editor-pane">
             <div class="editor-pane-header">
               <span>Markdown</span>
-              <div style="display:flex;gap:.5rem;align-items:center;font-weight:400;letter-spacing:0;text-transform:none">
+              <div class="editor-pane-tools">
                 <AlignPicker />
                 {editorImageWidget()}
               </div>
@@ -236,7 +226,7 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
                 id="body"
                 data-md-editor
                 hx-post="/preview"
-                hx-trigger="keyup changed delay:300ms"
+                hx-trigger="load, keyup changed delay:300ms"
                 hx-target="#preview"
               >{page.body_md}</textarea>
             </div>
@@ -244,34 +234,22 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
           <div class="editor-pane">
             <div class="editor-pane-header"><span>Preview</span></div>
             <div class="editor-pane-body editor-preview" id="preview">
-              <em style="color:var(--g-text-muted);font-size:.85rem">Loading preview…</em>
+              <p class="editor-preview-empty">Loading…</p>
             </div>
           </div>
         </div>
 
         <div class="editor-footerbar">
-          <span safe>/{page.slug}</span>
-          <span class="sep">·</span>
           <span id="word-count">— words</span>
-          <div style="flex:1"></div>
-          <span>Status: <strong>{page.status}</strong></span>
+          <div class="editor-footerbar-spacer" />
+          <span class="editor-footerbar-hint">Ctrl+S to save</span>
         </div>
       </form>
 
-      <form id="publish-form" method="POST" action={`/pages/${id}/publish`} style="display:none"></form>
+      <form id="publish-form" method="POST" action={`/pages/${id}/publish`} style="display:none" />
 
       <script src="/static/grip-editor.js" defer />
-      <script>{`
-        (function() {
-          var ta = document.querySelector('textarea[name="body"]');
-          var wc = document.getElementById('word-count');
-          if (ta && wc) {
-            function updateWC() { var w = ta.value.trim() ? ta.value.trim().split(/\\s+/).length : 0; wc.textContent = w + ' word' + (w !== 1 ? 's' : ''); }
-            ta.addEventListener('input', updateWC);
-            updateWC();
-          }
-        })();
-      `}</script>
+      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
 
