@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 import { paginationNav, esc } from '../../../views/shared';
-import { countFollowers, listFollowers, countReplies, listReplies } from '../../data/activity';
+import { countFollowers, listFollowers, countReplies, listReplies, toggleReplyStatus } from '../../data/activity';
 
 const PAGE_SIZE = 20;
 
@@ -117,11 +117,5 @@ export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
 }
 
 export function handleReplyToggle(db: Database, id: string): void {
-  const row = db
-    .prepare('SELECT status FROM ap_replies WHERE id = ?')
-    .get(id) as { status: string } | null;
-  if (row) {
-    const newStatus = row.status === 'visible' ? 'hidden' : 'visible';
-    db.prepare('UPDATE ap_replies SET status = ? WHERE id = ?').run(newStatus, id);
-  }
+  toggleReplyStatus(db, id);
 }

@@ -28,7 +28,7 @@ function unwrapPem(pem: string): Uint8Array {
 const ALGO = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' } as const;
 
 export async function ensureKeyPair(db: Database): Promise<void> {
-  const row = db.query('SELECT 1 FROM ap_keys WHERE id = ?').get('main');
+  const row = db.prepare('SELECT 1 FROM ap_keys WHERE id = ?').get('main');
   if (row) return;
 
   const keyPair = await crypto.subtle.generateKey(
@@ -48,7 +48,7 @@ export async function ensureKeyPair(db: Database): Promise<void> {
   const publicPem = wrapPem('PUBLIC KEY', Buffer.from(pubBuf).toString('base64'));
   const privatePem = wrapPem('PRIVATE KEY', Buffer.from(privBuf).toString('base64'));
 
-  db.query('INSERT INTO ap_keys (id, public_pem, private_pem, created_at) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO ap_keys (id, public_pem, private_pem, created_at) VALUES (?, ?, ?, ?)').run(
     'main',
     publicPem,
     privatePem,
@@ -59,7 +59,7 @@ export async function ensureKeyPair(db: Database): Promise<void> {
 export async function getKeyPair(db: Database): Promise<{ privateKey: CryptoKey; publicKeyPem: string }> {
   if (_cached) return _cached;
 
-  const row = db.query('SELECT public_pem, private_pem FROM ap_keys WHERE id = ?').get('main') as KeyRow | null;
+  const row = db.prepare('SELECT public_pem, private_pem FROM ap_keys WHERE id = ?').get('main') as KeyRow | null;
   if (!row) throw new Error('No key pair found — call ensureKeyPair first');
 
   const privateDer = unwrapPem(row.private_pem);

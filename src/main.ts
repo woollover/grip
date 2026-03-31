@@ -8,6 +8,7 @@ import { ensureKeyPair } from './activitypub/keys';
 import { existsSync } from 'fs';
 import { log } from './core/logger';
 import type { LogLevel } from './core/logger';
+import { setConfigValue, deleteConfigKey } from './server/data/config';
 
 interface GripConfig {
   server: { public_port: number; author_port: number; domain: string };
@@ -76,11 +77,11 @@ export async function main(): Promise<void> {
   const apCfg = loadApConfig(rawToml, config.server.domain);
   if (apCfg) {
     await ensureKeyPair(db);
-    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_enabled', '1');
-    db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('ap_username', apCfg.username);
+    setConfigValue(db, 'ap_enabled', '1');
+    setConfigValue(db, 'ap_username', apCfg.username);
     log.info(`ActivityPub enabled as @${apCfg.username}@${apCfg.domain}`);
   } else {
-    db.prepare('DELETE FROM config WHERE key = ?').run('ap_enabled');
+    deleteConfigKey(db, 'ap_enabled');
   }
 
   // Start both servers

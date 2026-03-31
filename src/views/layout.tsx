@@ -15,6 +15,7 @@
 import type { Database } from "bun:sqlite";
 import { getColorScheme, getThemeVersion } from "../core/themes";
 import { readPublicity, esc } from "./shared";
+import { getConfigValue } from "../server/data/config";
 
 export interface LayoutOptions {
   title: string;
@@ -35,9 +36,7 @@ function buildSidebar(
   pub: ReturnType<typeof readPublicity>,
   activeTag?: string,
 ): JSX.Element {
-  const desc = db
-    .prepare("SELECT value FROM config WHERE key = 'site_description'")
-    .get() as { value: string } | null;
+  const descValue = getConfigValue(db, "site_description");
 
   const recent = pub.showArticles
     ? (db
@@ -67,9 +66,9 @@ function buildSidebar(
 
   return (
     <aside class="sidebar">
-      {desc?.value && (
+      {descValue && (
         <section class="sb-section">
-          <p class="sb-desc">{esc(desc.value)}</p>
+          <p class="sb-desc">{esc(descValue)}</p>
         </section>
       )}
 
@@ -127,10 +126,7 @@ export function publicLayout(
     ? readPublicity(db)
     : { showArticles: true, showMicro: true, rssEnabled: true };
 
-  const domain = db
-    ? ((db.prepare("SELECT value FROM config WHERE key = 'domain'").get() as { value: string } | null)
-        ?.value ?? "")
-    : "";
+  const domain = db ? (getConfigValue(db, "domain") ?? "") : "";
 
   const sidebar = db && !hideSidebar ? buildSidebar(db, pub, activeTag) : null;
 
@@ -238,9 +234,7 @@ export function publicLayout(
 // ── 404 ───────────────────────────────────────────────────────────────────────
 
 export function render404(db: Database): string {
-  const siteTitle =
-    (db.prepare("SELECT value FROM config WHERE key = 'site_title'").get() as { value: string } | null)
-      ?.value ?? "GRIP";
+  const siteTitle = getConfigValue(db, "site_title") ?? "GRIP";
   return publicLayout(
     { title: "Not Found", siteTitle, db },
     <div>

@@ -8,6 +8,8 @@ import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
 import { getApFollowingByActorUrl, updateApFollowingState, syncFollowsUs, upsertReaderItems } from '../reader/store';
+import { insertFollower, deleteFollower, insertReply, deleteReply } from '../server/data/activity';
+import { getActiveMicroPostsForAp } from '../server/data/micro';
 
 export async function handleInbox(
   db: Database,
@@ -107,9 +109,7 @@ async function handleFollow(
   syncFollowsUs(db, actorUri, true);
 
   // Upsert follower
-  db.query(
-    'INSERT OR REPLACE INTO ap_followers (actor_uri, inbox_url, followed_at) VALUES (?, ?, ?)',
-  ).run(actorUri, inboxUrl, Date.now());
+  insertFollower(db, actorUri, inboxUrl);
 
   // Build and send Accept
   const acceptId = `${cfg.baseUrl}/activitypub/activities/${ulid()}`;
@@ -146,9 +146,7 @@ async function handleFollow(
 }
 
 async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): Promise<void> {
-  const posts = db
-    .query("SELECT id, body_html, body_md, created_at FROM micro_posts WHERE status = 'active' ORDER BY created_at DESC LIMIT 10")
-    .all() as MicroPostRow[];
+  const posts = getActiveMicroPostsForAp(db, 10) as MicroPostRow[];
   if (posts.length === 0) return;
 
   const keyPair = await getKeyPair(db);
@@ -178,7 +176,7 @@ async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): P
 function handleUndo(db: Database, activity: any, actorUri: string): void {
   const inner = activity.object;
   if (!inner || inner.type !== 'Follow') return;
-  db.query('DELETE FROM ap_followers WHERE actor_uri = ?').run(actorUri);
+  deleteFollower(db, actorUri);
 }
 
 async function handleCreateReply(
@@ -222,17 +220,7 @@ async function handleCreateReply(
     }
   }
 
-  db.query(
-    'INSERT OR IGNORE INTO ap_replies (id, note_id, actor_uri, actor_name, content, published_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(
-    note.id || ulid(),
-    noteId,
-    actorUri,
-    actorName,
-    content,
-    Date.now(),
-    'visible',
-  );
+  insertReply(db, note.id || ulid(), noteId, actorUri, actorName, content, Date.now(), 'visible');
 }
 
 /** Handle Accept — remote server accepted our Follow request. */
@@ -273,6 +261,5 @@ function handleDelete(db: Database, activity: any): void {
   const objectId =
     typeof activity.object === 'string' ? activity.object : activity.object?.id;
   if (!objectId) return;
-
-  db.query('DELETE FROM ap_replies WHERE id = ?').run(objectId);
+  deleteReply(db, objectId);
 }

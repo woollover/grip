@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { getColorScheme, getThemeVersion } from "../../../core/themes";
+import { getConfigValue } from "../../data/config";
 
 export function authorLayout(
   title: string,
@@ -11,13 +12,7 @@ export function authorLayout(
 ): JSX.Element {
   const scheme = db ? getColorScheme(db) : "light";
   const themeVersion = db ? getThemeVersion(db) : "default";
-  const apEnabled = db
-    ? !!(
-        db
-          .prepare("SELECT value FROM config WHERE key = 'ap_enabled'")
-          .get() as { value: string } | null
-      )?.value
-    : false;
+  const apEnabled = db ? !!getConfigValue(db, "ap_enabled") : false;
 
   function navLink(href: string, label: string): JSX.Element {
     const isActive = activePath === href || (activePath !== undefined && activePath.startsWith(href) && href !== '/dashboard');

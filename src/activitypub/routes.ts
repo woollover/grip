@@ -6,6 +6,8 @@ import { buildActor, buildNote, buildOrderedCollection } from './objects';
 import type { MicroPostRow } from './objects';
 import { buildOutbox, buildOutboxPage } from './outbox';
 import { handleInbox } from './inbox';
+import { countFollowers } from '../server/data/activity';
+import { getMicroPostForAp } from '../server/data/micro';
 
 function wantsActivityJson(request: Request): boolean {
   const accept = request.headers.get('Accept') ?? '';
@@ -68,8 +70,7 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
 
   // Followers
   app.get('/activitypub/followers', () => {
-    const row = db.query('SELECT COUNT(*) as cnt FROM ap_followers').get() as { cnt: number };
-    const collection = buildOrderedCollection(`${cfg.actorUrl}/followers`, [], row.cnt);
+    const collection = buildOrderedCollection(`${cfg.actorUrl}/followers`, [], countFollowers(db));
     return new Response(JSON.stringify(collection), {
       headers: { 'Content-Type': AP_CONTENT_TYPE },
     });
@@ -77,9 +78,7 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
 
   // Individual Note
   app.get('/activitypub/notes/:id', ({ params, request }) => {
-    const post = db
-      .query('SELECT id, body_html, body_md, created_at FROM micro_posts WHERE id = ?')
-      .get(params.id) as MicroPostRow | null;
+    const post = getMicroPostForAp(db, params.id) as MicroPostRow | null;
 
     if (!post) {
       return new Response('Not Found', { status: 404 });

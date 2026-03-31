@@ -18,6 +18,7 @@
  */
 
 import type { Database } from 'bun:sqlite';
+import { getConfigValue } from '../server/data/config';
 
 // ── Escaping helpers ────────────────────────────────────────────────────────
 
@@ -48,9 +49,7 @@ export interface PublicityConfig {
 }
 
 export function readPublicity(db: Database): PublicityConfig {
-  const get = (key: string, fallback: string) =>
-    (db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | null)
-      ?.value ?? fallback;
+  const get = (key: string, fallback: string) => getConfigValue(db, key, fallback)!;
   const isPrivate = get('publicity_mode', 'public') === 'private';
   return {
     showArticles: !isPrivate && get('show_articles', '1') === '1',

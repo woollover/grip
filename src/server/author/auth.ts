@@ -1,6 +1,7 @@
 import { compare } from 'bcryptjs';
 import { timingSafeEqual } from 'crypto';
 import type { Database } from 'bun:sqlite';
+import { getConfigValue, setConfigValue, deleteConfigKey } from '../data/config';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
@@ -27,27 +28,25 @@ export function clearAttempts(db: Database, ip: string): void {
 }
 
 export function getSessionToken(db: Database): string | null {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('session_token') as
-    { value: string } | null;
-  return row?.value ?? null;
+  return getConfigValue(db, 'session_token');
 }
 
 export function getSessionExpiry(db: Database): number {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('session_expires_at') as
-    { value: string } | null;
-  return row ? parseInt(row.value, 10) : 0;
+  const v = getConfigValue(db, 'session_expires_at');
+  return v ? parseInt(v, 10) : 0;
 }
 
 export function createSession(db: Database): string {
   const token = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
   const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('session_token', token);
-  db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run('session_expires_at', String(expiresAt));
+  setConfigValue(db, 'session_token', token);
+  setConfigValue(db, 'session_expires_at', String(expiresAt));
   return token;
 }
 
 export function destroySession(db: Database): void {
-  db.prepare('DELETE FROM config WHERE key IN (?, ?)').run('session_token', 'session_expires_at');
+  deleteConfigKey(db, 'session_token');
+  deleteConfigKey(db, 'session_expires_at');
 }
 
 export function verifySession(db: Database, cookie: string | undefined): boolean {
@@ -61,8 +60,7 @@ export function verifySession(db: Database, cookie: string | undefined): boolean
 }
 
 export async function verifyPassphrase(db: Database, submitted: string): Promise<boolean> {
-  const row = db.prepare('SELECT value FROM config WHERE key = ?').get('passphrase_hash') as
-    { value: string } | null;
-  if (!row) return false;
-  return compare(submitted, row.value);
+  const hash = getConfigValue(db, 'passphrase_hash');
+  if (!hash) return false;
+  return compare(submitted, hash);
 }

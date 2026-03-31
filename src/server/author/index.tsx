@@ -61,6 +61,7 @@ import {
 } from "./routes/reader";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
+import { getLatestActiveMicroPost } from "../data/micro";
 import { log } from "../../core/logger";
 import { version as currentVersion } from "../../../package.json";
 import { execSync } from "child_process";
@@ -259,16 +260,7 @@ export function createAuthorApp(
 
     // Fire-and-forget AP delivery for the newly created post
     if (apCfg) {
-      const latest = db
-        .prepare(
-          "SELECT id, body_html, body_md, created_at FROM micro_posts WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
-        )
-        .get() as {
-        id: string;
-        body_html: string;
-        body_md: string;
-        created_at: number;
-      } | null;
+      const latest = getLatestActiveMicroPost(db);
       if (latest) {
         deliverNewPost(db, apCfg, latest).catch((err) => {
           log.error("[activitypub] Delivery error:", err);

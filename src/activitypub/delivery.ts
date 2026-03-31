@@ -5,11 +5,7 @@ import { buildNote, buildCreateActivity } from './objects';
 import { signRequest } from './signatures';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
-
-interface FollowerRow {
-  actor_uri: string;
-  inbox_url: string;
-}
+import { listAllFollowers } from '../server/data/activity';
 
 export async function deliverNewPost(
   db: Database,
@@ -29,9 +25,7 @@ export async function deliverNewPost(
   const activity = buildCreateActivity(cfg, note, activityId);
   const body = JSON.stringify(activity);
 
-  const followers = db
-    .query('SELECT actor_uri, inbox_url FROM ap_followers')
-    .all() as FollowerRow[];
+  const followers = listAllFollowers(db);
 
   if (followers.length === 0) return;
 

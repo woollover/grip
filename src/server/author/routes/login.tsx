@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { getColorScheme } from "../../../core/themes";
+import { getConfigValue } from "../../data/config";
 
 export function renderLoginPage(
   badPassword: boolean,
@@ -7,13 +8,7 @@ export function renderLoginPage(
   db?: Database,
 ): string {
   const scheme = db ? getColorScheme(db) : "light";
-  const siteTitle = db
-    ? ((
-        db
-          .prepare("SELECT value FROM config WHERE key = 'site_title'")
-          .get() as { value: string } | null
-      )?.value ?? "GRIP")
-    : "GRIP";
+  const siteTitle = db ? (getConfigValue(db, "site_title", "GRIP") ?? "GRIP") : "GRIP";
 
   const page = (
     <html lang="en" data-theme={scheme}>

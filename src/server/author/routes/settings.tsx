@@ -9,6 +9,8 @@ import {
   readThemeCustom,
 } from "../../../core/themes";
 import { version as currentVersion } from "../../../../package.json";
+import { getConfigValue, setConfigValue } from "../../data/config";
+import { countFollowers } from "../../data/activity";
 
 function getConfig(db: Database): {
   title: string;
@@ -16,48 +18,30 @@ function getConfig(db: Database): {
   domain: string;
   homeIntro: string;
 } {
-  const get = (key: string, fallback: string) => {
-    const row = db
-      .prepare("SELECT value FROM config WHERE key = ?")
-      .get(key) as { value: string } | null;
-    return row?.value ?? fallback;
-  };
   return {
-    title: get("site_title", "My GRIP"),
-    description: get("site_description", ""),
-    domain: get("domain", "localhost"),
-    homeIntro: get("home_intro", ""),
+    title:       getConfigValue(db, "site_title",    "My GRIP")!,
+    description: getConfigValue(db, "site_description", "")!,
+    domain:      getConfigValue(db, "domain",        "localhost")!,
+    homeIntro:   getConfigValue(db, "home_intro",    "")!,
   };
 }
 
 function getPublicitySettings(db: Database) {
-  const get = (key: string, fallback: string) =>
-    (
-      db.prepare("SELECT value FROM config WHERE key = ?").get(key) as {
-        value: string;
-      } | null
-    )?.value ?? fallback;
+  const get = (key: string, fallback: string) => getConfigValue(db, key, fallback)!;
   return {
-    mode: get("publicity_mode", "public") as "public" | "private",
-    showArticles: get("show_articles", "1") === "1",
-    showMicro: get("show_micro", "1") === "1",
-    rssEnabled: get("rss_enabled", "1") === "1",
+    mode:         get("publicity_mode", "public") as "public" | "private",
+    showArticles: get("show_articles",  "1") === "1",
+    showMicro:    get("show_micro",     "1") === "1",
+    rssEnabled:   get("rss_enabled",    "1") === "1",
   };
 }
 
 export function handlePublicityUpdate(db: Database, body: any): void {
   const mode = body.publicity_mode === "private" ? "private" : "public";
-  const showArticles = body.show_articles === "1" ? "1" : "0";
-  const showMicro = body.show_micro === "1" ? "1" : "0";
-  const rssEnabled = body.rss_enabled === "1" ? "1" : "0";
-  const set = (k: string, v: string) =>
-    db
-      .prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)")
-      .run(k, v);
-  set("publicity_mode", mode);
-  set("show_articles", showArticles);
-  set("show_micro", showMicro);
-  set("rss_enabled", rssEnabled);
+  setConfigValue(db, "publicity_mode", mode);
+  setConfigValue(db, "show_articles",  body.show_articles === "1" ? "1" : "0");
+  setConfigValue(db, "show_micro",     body.show_micro    === "1" ? "1" : "0");
+  setConfigValue(db, "rss_enabled",    body.rss_enabled   === "1" ? "1" : "0");
 }
 
 function getApStatus(db: Database): {
@@ -66,28 +50,13 @@ function getApStatus(db: Database): {
   domain: string;
   contacts: number;
 } | null {
-  const enabled = (
-    db.prepare("SELECT value FROM config WHERE key = 'ap_enabled'").get() as {
-      value: string;
-    } | null
-  )?.value;
-  if (!enabled) return null;
-  const username =
-    (
-      db
-        .prepare("SELECT value FROM config WHERE key = 'ap_username'")
-        .get() as { value: string } | null
-    )?.value ?? "";
-  const domain =
-    (
-      db.prepare("SELECT value FROM config WHERE key = ?").get("domain") as {
-        value: string;
-      } | null
-    )?.value ?? "";
-  const { cnt } = db
-    .prepare("SELECT COUNT(*) as cnt FROM ap_followers")
-    .get() as { cnt: number };
-  return { enabled: true, username, domain, contacts: cnt };
+  if (!getConfigValue(db, "ap_enabled")) return null;
+  return {
+    enabled:  true,
+    username: getConfigValue(db, "ap_username", "")!,
+    domain:   getConfigValue(db, "domain",      "localhost")!,
+    contacts: countFollowers(db),
+  };
 }
 
 export function renderSettings(db: Database): JSX.Element {
@@ -478,10 +447,7 @@ function KitchenSink(): JSX.Element {
 }
 
 export function renderThemeSettings(db: Database): JSX.Element {
-  const themeRow = db
-    .prepare("SELECT value FROM config WHERE key = ?")
-    .get("theme") as { value: string } | null;
-  const currentTheme = (themeRow?.value ?? "terracotta") as ThemeName;
+  const currentTheme = (getConfigValue(db, "theme", "terracotta") ?? "terracotta") as ThemeName;
   const custom = readThemeCustom(db);
   const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.terracotta;
 
@@ -944,10 +910,7 @@ export function handleThemeChange(
   const theme = validThemes.includes(body.theme as ThemeName)
     ? (body.theme as ThemeName)
     : "terracotta";
-  db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(
-    "theme",
-    theme,
-  );
+  setConfigValue(db, "theme", theme);
 
   const custom: ThemeCustom = {};
   // colorScheme is derived from the preset, not user-editable directly
@@ -966,10 +929,7 @@ export function handleThemeChange(
   const darkPresets: ThemeName[] = ["obsidian", "terminal", "neon"];
   custom.colorScheme = darkPresets.includes(theme) ? "dark" : "light";
 
-  db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(
-    "theme_custom",
-    JSON.stringify(custom),
-  );
+  setConfigValue(db, "theme_custom", JSON.stringify(custom));
 }
 
 function isHexColor(s: string | undefined): boolean {
