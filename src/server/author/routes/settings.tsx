@@ -292,11 +292,13 @@ accept_replies = true`}</pre>
 
 // ── Theme editor ──────────────────────────────────────────────────────────────
 
-const ALL_PRESETS: { name: ThemeName; label: string }[] = [
-  { name: "literary", label: "Literary" },
-  { name: "ink", label: "Ink" },
-  { name: "coder", label: "Coder" },
-  { name: "cyberpunk", label: "Cyberpunk" },
+const ALL_PRESETS: { name: ThemeName; label: string; desc: string }[] = [
+  { name: "terracotta", label: "Terracotta", desc: "Earthy, warm, personal" },
+  { name: "obsidian",   label: "Obsidian",   desc: "Deep, focused, night-writing" },
+  { name: "studio",     label: "Studio",     desc: "Creative, confident, spacious" },
+  { name: "paper",      label: "Paper",      desc: "Disappear into the text" },
+  { name: "terminal",   label: "Terminal",   desc: "Developer aesthetic, compact" },
+  { name: "neon",       label: "Neon",       desc: "Electric, synthetic, high contrast" },
 ];
 
 function FontOptions({
@@ -479,9 +481,9 @@ export function renderThemeSettings(db: Database): JSX.Element {
   const themeRow = db
     .prepare("SELECT value FROM config WHERE key = ?")
     .get("theme") as { value: string } | null;
-  const currentTheme = (themeRow?.value ?? "literary") as ThemeName;
+  const currentTheme = (themeRow?.value ?? "terracotta") as ThemeName;
   const custom = readThemeCustom(db);
-  const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.literary;
+  const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.terracotta;
 
   const eff = {
     colorScheme: custom?.colorScheme ?? defaults.colorScheme,
@@ -740,7 +742,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
             <select style="width:100%" onchange="applyPreset(this.value)">
               {ALL_PRESETS.map((p) => (
                 <option value={p.name} selected={currentTheme === p.name}>
-                  {p.label}
+                  {p.label} — {p.desc}
                 </option>
               ))}
             </select>
@@ -932,16 +934,16 @@ export function handleThemeChange(
   },
 ): void {
   const validThemes: ThemeName[] = [
-    "light",
-    "dark",
-    "literary",
-    "ink",
-    "coder",
-    "cyberpunk",
+    "terracotta",
+    "obsidian",
+    "studio",
+    "paper",
+    "terminal",
+    "neon",
   ];
   const theme = validThemes.includes(body.theme as ThemeName)
     ? (body.theme as ThemeName)
-    : "literary";
+    : "terracotta";
   db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(
     "theme",
     theme,
@@ -960,10 +962,9 @@ export function handleThemeChange(
   if (["compact", "default", "relaxed"].includes(body.spacing ?? ""))
     custom.spacing = body.spacing as "compact" | "default" | "relaxed";
 
-  // Set colorScheme when using light/dark themes with custom colors
-  if (theme === "light" || theme === "dark") {
-    custom.colorScheme = theme;
-  }
+  // Derive colorScheme from preset identity
+  const darkPresets: ThemeName[] = ["obsidian", "terminal", "neon"];
+  custom.colorScheme = darkPresets.includes(theme) ? "dark" : "light";
 
   db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(
     "theme_custom",

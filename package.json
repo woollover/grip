@@ -11,6 +11,11 @@
   },
   "dependencies": {
     "@elysiajs/static": "^1.1.0",
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/instrument-serif": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/source-serif-4": "^5.2.9",
     "@kitajs/html": "^4.2.13",
     "bcryptjs": "^2.4.3",
     "elysia": "^1.2.0",

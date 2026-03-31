@@ -12,120 +12,155 @@ function configVal(
 }
 
 export type ThemeName =
-  | "light"
-  | "dark"
-  | "coder"
-  | "cyberpunk"
-  | "literary"
-  | "ink";
+  | "terracotta"
+  | "obsidian"
+  | "studio"
+  | "paper"
+  | "terminal"
+  | "neon";
 
-// Base theme CSS — each preset overrides the --g-* tokens defined in grip.css.
-// The :root block handles both light[data-theme] and dark[data-theme] specificity.
+// Dark-first presets (data-theme="dark" will be set on <html>)
+const DARK_THEMES: ThemeName[] = ["obsidian", "terminal", "neon"];
+
+// Base theme CSS — each preset overrides --g-* tokens defined in grip.css.
+// selector html[data-theme] has specificity (0,1,1) > html (0,0,1) in grip.css base.
 export const THEMES: Record<ThemeName, string> = {
-  light: `/* GRIP — Light (default) */
+  terracotta: `/* GRIP — Terracotta (default) */
+/* Light mode is the base; grip.css html{} block handles defaults. */
 :root { color-scheme: light; }
 `,
 
-  dark: `/* GRIP — Dark */
-html[data-theme] { color-scheme: dark;
-  --g-bg: #1a1d23; --g-surface: #22262d; --g-surface-2: #2c3038;
-  --g-border: #373d47; --g-border-faint: rgba(100,112,130,.2);
-  --g-text: #ced4da; --g-text-muted: #868e96; --g-text-strong: #f1f3f5;
-  --g-accent: #74c0fc; --g-accent-hover: #a5d8ff; --g-accent-fg: #1a1d23;
-  --g-accent-muted: rgba(116,192,252,.12);
-  --g-code-bg: #2c3038; --g-code-text: #ff8787;
-  --g-danger: #ff6b6b; --g-success: #69db7c; }
+  obsidian: `/* GRIP — Obsidian */
+html[data-theme] {
+  color-scheme: dark;
+  --g-bg:           #0f0f0e;
+  --g-surface:      #161614;
+  --g-surface-2:    #1e1e1c;
+  --g-border:       #252420;
+  --g-border-faint: rgba(37, 36, 32, 0.6);
+  --g-text:         #e8e4de;
+  --g-text-muted:   #6e6a64;
+  --g-text-strong:  #f0ece6;
+  --g-accent:       #5b8fd4;
+  --g-accent-hover: #4478bc;
+  --g-accent-fg:    #0f0f0e;
+  --g-accent-muted: rgba(91, 143, 212, 0.12);
+  --g-code-bg:      #161614;
+  --g-code-text:    #a8c4e8;
+  --g-danger:       #ff6b6b;
+  --g-success:      #69db7c;
+  --g-warn:         #ffd43b;
+  --g-font-heading: 'Fraunces', Georgia, serif;
+  --g-font-body:    'Source Serif 4', Charter, Georgia, serif;
+  --g-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+}
 `,
 
-  coder: `/* GRIP — Coder (GitHub dark) */
+  studio: `/* GRIP — Studio */
+html[data-theme] {
+  color-scheme: light;
+  --g-bg:           #f8f7fc;
+  --g-surface:      #efecf7;
+  --g-surface-2:    #e4e0f0;
+  --g-border:       #ddd8ed;
+  --g-border-faint: rgba(221, 216, 237, 0.5);
+  --g-text:         #1a1726;
+  --g-text-muted:   #6b6480;
+  --g-text-strong:  #0f0c1a;
+  --g-accent:       #6148a2;
+  --g-accent-hover: #4f3a8a;
+  --g-accent-fg:    #ffffff;
+  --g-accent-muted: rgba(97, 72, 162, 0.1);
+  --g-code-bg:      #efecf7;
+  --g-code-text:    #4f3a8a;
+  --g-font-heading: 'DM Sans', system-ui, sans-serif;
+  --g-font-body:    'DM Sans', system-ui, sans-serif;
+  --g-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --g-lh:           1.7;
+}
+`,
+
+  paper: `/* GRIP — Paper */
+html[data-theme] {
+  color-scheme: light;
+  --g-bg:           #ffffff;
+  --g-surface:      #f5f5f5;
+  --g-surface-2:    #ebebeb;
+  --g-border:       #e5e5e5;
+  --g-border-faint: rgba(229, 229, 229, 0.5);
+  --g-text:         #111111;
+  --g-text-muted:   #666666;
+  --g-text-strong:  #000000;
+  --g-accent:       #000000;
+  --g-accent-hover: #333333;
+  --g-accent-fg:    #ffffff;
+  --g-accent-muted: rgba(0, 0, 0, 0.06);
+  --g-code-bg:      #f5f5f5;
+  --g-code-text:    #333333;
+  --g-font-heading: Georgia, Charter, 'Bitstream Charter', serif;
+  --g-font-body:    Georgia, Charter, 'Bitstream Charter', serif;
+  --g-font-mono:    'Courier New', Courier, monospace;
+  --g-lh:           1.85;
+}
+`,
+
+  terminal: `/* GRIP — Terminal */
 html[data-theme] {
   color-scheme: dark;
   --g-bg:           #0d1117;
   --g-surface:      #161b22;
   --g-surface-2:    #21262d;
   --g-border:       #30363d;
-  --g-border-faint: rgba(48,54,61,.5);
-  --g-text:         #e6edf3;
-  --g-text-muted:   #8b949e;
+  --g-border-faint: rgba(48, 54, 61, 0.5);
+  --g-text:         #c9d1d9;
+  --g-text-muted:   #6e7681;
   --g-text-strong:  #f0f6fc;
-  --g-accent:       #58a6ff;
-  --g-accent-hover: #79c0ff;
+  --g-accent:       #3fb950;
+  --g-accent-hover: #2ea043;
   --g-accent-fg:    #0d1117;
-  --g-accent-muted: rgba(88,166,255,.12);
+  --g-accent-muted: rgba(63, 185, 80, 0.12);
   --g-code-bg:      #161b22;
-  --g-code-text:    #79c0ff;
-  --g-font-body:    system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --g-font-mono:    'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+  --g-code-text:    #7ee787;
+  --g-danger:       #ff7b72;
+  --g-success:      #3fb950;
+  --g-warn:         #d29922;
+  --g-font-heading: 'JetBrains Mono', 'Fira Code', monospace;
+  --g-font-body:    'DM Sans', system-ui, sans-serif;
+  --g-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --g-r:            2px;
+  --g-r-sm:         1px;
+  --g-r-lg:         4px;
+  --g-r-input:      2px;
 }
 `,
 
-  cyberpunk: `/* GRIP — Cyberpunk */
+  neon: `/* GRIP — Neon */
 html[data-theme] {
   color-scheme: dark;
-  --g-bg:           #0a0a12;
-  --g-surface:      #12121e;
-  --g-surface-2:    #1a1a2e;
-  --g-border:       #2a2a40;
-  --g-border-faint: rgba(42,42,64,.5);
-  --g-text:         #c8c8e8;
-  --g-text-muted:   #6868a0;
-  --g-text-strong:  #e0e0f8;
-  --g-accent:       #00ff88;
-  --g-accent-hover: #33ffaa;
-  --g-accent-fg:    #0a0a12;
-  --g-accent-muted: rgba(0,255,136,.1);
-  --g-code-bg:      #1a1a2e;
-  --g-code-text:    #ff00aa;
-  --g-font-body:    'Courier New', 'Lucida Console', monospace;
-  --g-font-heading: 'Courier New', 'Lucida Console', monospace;
-  --g-font-mono:    'Courier New', 'Lucida Console', monospace;
-}
-`,
-
-  literary: `/* GRIP — Literary (warm serif) */
-html[data-theme] {
-  color-scheme: light;
-  --g-bg:           #faf8f3;
-  --g-surface:      #f3f0e8;
-  --g-surface-2:    #ece8dc;
-  --g-border:       rgba(154,144,128,.35);
-  --g-border-faint: rgba(154,144,128,.18);
-  --g-text:         #2c2a24;
-  --g-text-muted:   #9a9080;
-  --g-text-strong:  #1a1814;
-  --g-accent:       #8b5e3c;
-  --g-accent-hover: #7a5234;
-  --g-accent-fg:    #fff;
-  --g-accent-muted: rgba(139,94,60,.1);
-  --g-code-bg:      #ece8dc;
-  --g-code-text:    #6b4226;
-  --g-font-body:    Palatino, 'Palatino Linotype', 'Book Antiqua', serif;
-  --g-font-heading: Optima, Candara, 'Noto Sans', sans-serif;
-  --g-font-mono:    'Courier New', Courier, monospace;
-  --g-lh:           1.85;
-}
-`,
-
-  ink: `/* GRIP — Ink (editorial black & white) */
-html[data-theme] {
-  color-scheme: light;
-  --g-bg:           #ffffff;
-  --g-surface:      #f8f9fa;
-  --g-surface-2:    #f1f3f5;
-  --g-border:       rgba(102,102,102,.3);
-  --g-border-faint: rgba(102,102,102,.15);
-  --g-text:         #111111;
-  --g-text-muted:   #666666;
-  --g-text-strong:  #000000;
-  --g-accent:       #1a3a6e;
-  --g-accent-hover: #142d57;
-  --g-accent-fg:    #fff;
-  --g-accent-muted: rgba(26,58,110,.08);
-  --g-code-bg:      #f1f3f5;
-  --g-code-text:    #1a3a6e;
-  --g-font-body:    Georgia, 'Times New Roman', serif;
-  --g-font-mono:    'Courier New', Courier, monospace;
-  --g-lh:           1.8;
+  --g-bg:           #0a0011;
+  --g-surface:      #130021;
+  --g-surface-2:    #1c0030;
+  --g-border:       #2a1540;
+  --g-border-faint: rgba(42, 21, 64, 0.6);
+  --g-text:         #f0e8ff;
+  --g-text-muted:   #9975cc;
+  --g-text-strong:  #ffffff;
+  --g-accent:       #e040fb;
+  --g-accent-hover: #ea80ff;
+  --g-accent-fg:    #0a0011;
+  --g-accent-muted: rgba(224, 64, 251, 0.12);
+  --g-code-bg:      #0d001a;
+  --g-code-text:    #00e5ff;
+  --g-danger:       #ff5555;
+  --g-success:      #00e5a0;
+  --g-warn:         #ffcc00;
+  --g-font-heading: 'DM Sans', system-ui, sans-serif;
+  --g-font-body:    'DM Sans', system-ui, sans-serif;
+  --g-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --g-r:            0px;
+  --g-r-sm:         0px;
+  --g-r-lg:         0px;
+  --g-r-input:      0px;
 }
 `,
 };
@@ -147,77 +182,77 @@ export interface ThemeCustom {
 
 // Default field values for the theme editor form, per preset.
 export const PRESET_DEFAULTS: Record<ThemeName, Required<ThemeCustom>> = {
-  light: {
+  terracotta: {
     colorScheme: "light",
-    fontBody: "var(--font-sans)",
-    fontHeading: "",
-    fontMono: "var(--font-mono)",
-    colorAccent: "#1971c2",
-    colorBg: "#ffffff",
-    colorText: "#343a40",
-    colorMuted: "#868e96",
-    radius: "6px",
+    fontBody: "'Source Serif 4', Charter, Georgia, serif",
+    fontHeading: "'Instrument Serif', Georgia, serif",
+    fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+    colorAccent: "#b85c38",
+    colorBg: "#faf8f5",
+    colorText: "#1c1916",
+    colorMuted: "#6b6560",
+    radius: "4px",
     spacing: "default",
   },
-  dark: {
+  obsidian: {
     colorScheme: "dark",
-    fontBody: "var(--font-sans)",
-    fontHeading: "",
-    fontMono: "var(--font-mono)",
-    colorAccent: "#74c0fc",
-    colorBg: "#1a1d23",
-    colorText: "#ced4da",
-    colorMuted: "#868e96",
-    radius: "6px",
+    fontBody: "'Source Serif 4', Charter, Georgia, serif",
+    fontHeading: "'Fraunces', Georgia, serif",
+    fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+    colorAccent: "#5b8fd4",
+    colorBg: "#0f0f0e",
+    colorText: "#e8e4de",
+    colorMuted: "#6e6a64",
+    radius: "4px",
     spacing: "default",
   },
-  coder: {
-    colorScheme: "dark",
-    fontBody: "var(--font-system-ui)",
-    fontHeading: "",
-    fontMono: "var(--font-monospace-code)",
-    colorAccent: "#58a6ff",
-    colorBg: "#0d1117",
-    colorText: "#e6edf3",
-    colorMuted: "#8b949e",
-    radius: "4px",
-    spacing: "compact",
-  },
-  cyberpunk: {
-    colorScheme: "dark",
-    fontBody: "var(--font-monospace-slab-serif)",
-    fontHeading: "var(--font-monospace-slab-serif)",
-    fontMono: "var(--font-monospace-slab-serif)",
-    colorAccent: "#00ff88",
-    colorBg: "#0a0a12",
-    colorText: "#c8c8e8",
-    colorMuted: "#6868a0",
-    radius: "0px",
-    spacing: "compact",
-  },
-  literary: {
+  studio: {
     colorScheme: "light",
-    fontBody: "var(--font-old-style)",
-    fontHeading: "var(--font-classical-humanist)",
-    fontMono: "var(--font-mono)",
-    colorAccent: "#8b5e3c",
-    colorBg: "#faf8f3",
-    colorText: "#2c2a24",
-    colorMuted: "#9a9080",
-    radius: "4px",
+    fontBody: "'DM Sans', system-ui, sans-serif",
+    fontHeading: "'DM Sans', system-ui, sans-serif",
+    fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+    colorAccent: "#6148a2",
+    colorBg: "#f8f7fc",
+    colorText: "#1a1726",
+    colorMuted: "#6b6480",
+    radius: "6px",
     spacing: "relaxed",
   },
-  ink: {
+  paper: {
     colorScheme: "light",
-    fontBody: "var(--font-transitional)",
-    fontHeading: "",
-    fontMono: "var(--font-mono)",
-    colorAccent: "#1a3a6e",
+    fontBody: "Georgia, Charter, 'Bitstream Charter', serif",
+    fontHeading: "Georgia, Charter, 'Bitstream Charter', serif",
+    fontMono: "'Courier New', Courier, monospace",
+    colorAccent: "#000000",
     colorBg: "#ffffff",
     colorText: "#111111",
     colorMuted: "#666666",
     radius: "2px",
     spacing: "relaxed",
+  },
+  terminal: {
+    colorScheme: "dark",
+    fontBody: "'DM Sans', system-ui, sans-serif",
+    fontHeading: "'JetBrains Mono', 'Fira Code', monospace",
+    fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+    colorAccent: "#3fb950",
+    colorBg: "#0d1117",
+    colorText: "#c9d1d9",
+    colorMuted: "#6e7681",
+    radius: "2px",
+    spacing: "compact",
+  },
+  neon: {
+    colorScheme: "dark",
+    fontBody: "'DM Sans', system-ui, sans-serif",
+    fontHeading: "'DM Sans', system-ui, sans-serif",
+    fontMono: "'JetBrains Mono', 'Fira Code', monospace",
+    colorAccent: "#e040fb",
+    colorBg: "#0a0011",
+    colorText: "#f0e8ff",
+    colorMuted: "#9975cc",
+    radius: "0px",
+    spacing: "compact",
   },
 };
 
@@ -322,8 +357,8 @@ export function readThemeCustom(
 }
 
 export function getThemeCss(db: import("bun:sqlite").Database): string {
-  const theme = (configVal(db, "theme") ?? "literary") as ThemeName;
-  const base = THEMES[theme] ?? THEMES.literary;
+  const theme = (configVal(db, "theme") ?? "terracotta") as ThemeName;
+  const base = THEMES[theme] ?? THEMES.terracotta;
   const custom = readThemeCustom(db);
   if (!custom) return base;
   return base + "\n/* Custom overrides */\n" + buildOverrideCss(custom);
@@ -335,15 +370,14 @@ export function getColorScheme(
   const custom = readThemeCustom(db);
   if (custom?.colorScheme === "dark") return "dark";
   if (custom?.colorScheme === "light") return "light";
-  const theme = configVal(db, "theme") ?? "literary";
-  if (theme === "dark" || theme === "coder" || theme === "cyberpunk")
-    return "dark";
+  const theme = configVal(db, "theme") ?? "terracotta";
+  if (DARK_THEMES.includes(theme as ThemeName)) return "dark";
   return "light";
 }
 
 export function getThemeVersion(db: import("bun:sqlite").Database): string {
   // Generate a hash based on theme and custom settings to bust browser cache
-  const theme = configVal(db, "theme") ?? "literary";
+  const theme = configVal(db, "theme") ?? "terracotta";
   const custom = configVal(db, "theme_custom") ?? "";
   const combined = theme + "|" + custom;
   // Simple hash function

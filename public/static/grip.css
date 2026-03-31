@@ -1,37 +1,35 @@
 /*
  * GRIP Design System — grip.css
  * Built on Open Props tokens (open-props.min.css must load first).
- * Replaces PicoCSS entirely.
- *
- * Palette source: Open Color (https://yeun.github.io/open-color/)
- * Token prefix: --g-* for GRIP semantic tokens
+ * Default palette: Terracotta — earthy, warm, personal.
+ * Token prefix: --g-* for GRIP semantic tokens.
  */
 
 /* ═══════════════════════════════════════════════════════
-   1. TOKENS — light mode (default)
+   1. TOKENS — Terracotta light (default)
    ═══════════════════════════════════════════════════════ */
 html {
   color-scheme: light;
 
   /* Surface */
-  --g-bg: #ffffff;
-  --g-surface: #f8f9fa;
-  --g-surface-2: #f1f3f5;
+  --g-bg: #faf8f5;
+  --g-surface: #f0ece5;
+  --g-surface-2: #e5dfd6;
 
   /* Borders */
-  --g-border: #dee2e6;
-  --g-border-faint: rgba(173, 181, 189, 0.25);
+  --g-border: #e2ddd8;
+  --g-border-faint: rgba(226, 221, 216, 0.5);
 
   /* Text */
-  --g-text: #343a40;
-  --g-text-muted: #868e96;
-  --g-text-strong: #212529;
+  --g-text: #1c1916;
+  --g-text-muted: #6b6560;
+  --g-text-strong: #0f0d0b;
 
-  /* Accent — indigo-ish blue (Open Color blue-7) */
-  --g-accent: #1971c2;
-  --g-accent-hover: #1864ab;
+  /* Accent — terracotta */
+  --g-accent: #b85c38;
+  --g-accent-hover: #9c4c2e;
   --g-accent-fg: #ffffff;
-  --g-accent-muted: rgba(25, 113, 194, 0.1);
+  --g-accent-muted: rgba(184, 92, 56, 0.1);
 
   /* Semantic */
   --g-danger: #c92a2a;
@@ -40,15 +38,15 @@ html {
   --g-warn: #e67700;
 
   /* Code */
-  --g-code-bg: #f1f3f5;
-  --g-code-text: #c92a2a;
+  --g-code-bg: #f0ece5;
+  --g-code-text: #7a3520;
 
-  /* Typography */
-  --g-font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --g-font-heading: var(--g-font-body);
-  --g-font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
-  --g-lh: 1.72;
-  --g-lh-tight: 1.3;
+  /* Typography — editorial serif stack */
+  --g-font-body: 'Source Serif 4', Charter, Georgia, serif;
+  --g-font-heading: 'Instrument Serif', Georgia, serif;
+  --g-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --g-lh: 1.8;
+  --g-lh-tight: 1.2;
 
   /* Shape */
   --g-r: 4px;
@@ -65,43 +63,139 @@ html {
   --g-space-lg: 1.5rem;
   --g-space-xl: 2rem;
 
+  /* Layout */
+  --g-measure: 68ch;
+  --g-measure-wide: 800px;
+  --g-max-width: 1100px;
+
   /* Motion */
   --g-t: 0.15s ease;
 }
 
 /* ═══════════════════════════════════════════════════════
-   2. TOKENS — dark mode
+   2. TOKENS — Terracotta dark (fallback for dark themes
+      that don't set their own palette via theme.css)
    ═══════════════════════════════════════════════════════ */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --g-bg: #1a1d23;
-  --g-surface: #22262d;
-  --g-surface-2: #2c3038;
+  --g-bg: #1a1816;
+  --g-surface: #242018;
+  --g-surface-2: #2e281f;
 
-  --g-border: #373d47;
-  --g-border-faint: rgba(100, 112, 130, 0.2);
+  --g-border: #3a342a;
+  --g-border-faint: rgba(58, 52, 42, 0.5);
 
-  --g-text: #ced4da;
-  --g-text-muted: #868e96;
-  --g-text-strong: #f1f3f5;
+  --g-text: #e8e4de;
+  --g-text-muted: #8a847e;
+  --g-text-strong: #f5f1eb;
 
-  --g-accent: #74c0fc;
-  --g-accent-hover: #a5d8ff;
-  --g-accent-fg: #1a1d23;
-  --g-accent-muted: rgba(116, 192, 252, 0.12);
+  --g-accent: #c96b44;
+  --g-accent-hover: #db7a52;
+  --g-accent-fg: #1a1816;
+  --g-accent-muted: rgba(201, 107, 68, 0.12);
 
   --g-danger: #ff6b6b;
   --g-danger-bg: rgba(255, 107, 107, 0.1);
   --g-success: #69db7c;
   --g-warn: #ffd43b;
 
-  --g-code-bg: #2c3038;
-  --g-code-text: #ff8787;
+  --g-code-bg: #242018;
+  --g-code-text: #e8936a;
 }
 
 /* ═══════════════════════════════════════════════════════
-   3. RESET & BASE
+   3. FONTS — self-hosted woff2, served from /static/fonts/.
+      No outbound requests. All files vendored at install time.
+   ═══════════════════════════════════════════════════════ */
+
+/* Instrument Serif — Terracotta display */
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/static/fonts/instrument-serif-latin-400-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/static/fonts/instrument-serif-latin-400-italic.woff2') format('woff2');
+  font-style: italic; font-weight: 400; font-display: swap;
+}
+
+/* Source Serif 4 — Terracotta / Obsidian body */
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/static/fonts/source-serif-4-latin-400-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/static/fonts/source-serif-4-latin-400-italic.woff2') format('woff2');
+  font-style: italic; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/static/fonts/source-serif-4-latin-600-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 600; font-display: swap;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/static/fonts/source-serif-4-latin-600-italic.woff2') format('woff2');
+  font-style: italic; font-weight: 600; font-display: swap;
+}
+
+/* Fraunces — Obsidian display */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/static/fonts/fraunces-latin-400-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/static/fonts/fraunces-latin-400-italic.woff2') format('woff2');
+  font-style: italic; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/static/fonts/fraunces-latin-700-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 700; font-display: swap;
+}
+
+/* DM Sans — Studio / Terminal / Neon */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/static/fonts/dm-sans-latin-400-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/static/fonts/dm-sans-latin-400-italic.woff2') format('woff2');
+  font-style: italic; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/static/fonts/dm-sans-latin-500-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 500; font-display: swap;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/static/fonts/dm-sans-latin-700-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 700; font-display: swap;
+}
+
+/* JetBrains Mono — all presets code */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/static/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/static/fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');
+  font-style: normal; font-weight: 500; font-display: swap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   5. RESET & BASE
    ═══════════════════════════════════════════════════════ */
 *,
 *::before,
@@ -301,7 +395,7 @@ li {
 }
 
 /* ═══════════════════════════════════════════════════════
-   4. LAYOUT
+   6. LAYOUT
    ═══════════════════════════════════════════════════════ */
 .container {
   width: 100%;
@@ -311,7 +405,7 @@ li {
 }
 
 /* ═══════════════════════════════════════════════════════
-   5. BUTTONS
+   7. BUTTONS
    ═══════════════════════════════════════════════════════ */
 button,
 [role="button"] {
@@ -382,7 +476,7 @@ button:disabled,
 }
 
 /* ═══════════════════════════════════════════════════════
-   6. FORMS
+   8. FORMS
    ═══════════════════════════════════════════════════════ */
 label {
   display: block;
@@ -469,7 +563,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   7. PUBLIC SITE — HEADER
+   15. PUBLIC SITE — HEADER
    ═══════════════════════════════════════════════════════ */
 .site-header {
   border-bottom: 1px solid var(--g-border);
@@ -516,7 +610,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   8. PUBLIC SITE — PAGE SHELL
+   14. PUBLIC SITE — PAGE SHELL
    ═══════════════════════════════════════════════════════ */
 .layout-wrap {
   display: grid;
@@ -540,7 +634,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   9. PUBLIC SITE — SIDEBAR
+   15. PUBLIC SITE — SIDEBAR
    ═══════════════════════════════════════════════════════ */
 .sidebar {
   font-size: 0.8rem;
@@ -595,7 +689,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   10. PUBLIC SITE — TAGS
+   14. PUBLIC SITE — TAGS
    ═══════════════════════════════════════════════════════ */
 .tag-cloud {
   display: flex;
@@ -626,7 +720,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   11. PUBLIC SITE — CONTENT PATTERNS
+   15. PUBLIC SITE — CONTENT PATTERNS
    ═══════════════════════════════════════════════════════ */
 .section-label {
   font-size: 0.62rem;
@@ -728,7 +822,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   12. PUBLIC SITE — ARTICLE PROSE
+   14. PUBLIC SITE — ARTICLE PROSE
    ═══════════════════════════════════════════════════════ */
 .prose {
   line-height: 1.82;
@@ -827,7 +921,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   13. PUBLIC SITE — PAGINATION & FOOTER
+   15. PUBLIC SITE — PAGINATION & FOOTER
    ═══════════════════════════════════════════════════════ */
 .pagination {
   display: flex;
@@ -888,7 +982,7 @@ input[type="checkbox"] {
 }
 
 /* ═══════════════════════════════════════════════════════
-   14. AUTHOR PANEL — BASE
+   18. AUTHOR PANEL — BASE
    ═══════════════════════════════════════════════════════ */
 body.g-author {
   font-size: 0.9rem;
@@ -970,7 +1064,7 @@ body.g-author hr {
 }
 
 /* ═══════════════════════════════════════════════════════
-   15. AUTHOR PANEL — NAV
+   17. AUTHOR PANEL — NAV
    ═══════════════════════════════════════════════════════ */
 .g-nav {
   border-bottom: 1px solid var(--g-border);
@@ -1021,7 +1115,7 @@ body.g-author hr {
 }
 
 /* ═══════════════════════════════════════════════════════
-   16. AUTHOR PANEL — COMPONENTS
+   18. AUTHOR PANEL — COMPONENTS
    ═══════════════════════════════════════════════════════ */
 .page-hd {
   display: flex;
@@ -1107,7 +1201,7 @@ body.g-author hr {
 }
 
 /* ═══════════════════════════════════════════════════════
-   17. LOGIN PAGE
+   19. LOGIN PAGE
    ═══════════════════════════════════════════════════════ */
 .login-wrap {
   min-height: 100vh;
@@ -1136,7 +1230,7 @@ body.g-author hr {
 }
 
 /* ═══════════════════════════════════════════════════════
-   18. READER COMPONENTS
+   20. READER COMPONENTS
    ═══════════════════════════════════════════════════════ */
 .reader-item {
   padding: 1rem 0;
