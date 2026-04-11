@@ -1,11 +1,11 @@
-import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
 import { applyEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { mkdirSync } from 'fs';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
-import { listAllMedia, type MediaFile } from '../../data/media';
+import type { GripDb } from '../../data/index';
+import type { MediaFile } from '../../data/media';
 
 const ALLOWED_MIME: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -31,9 +31,9 @@ function mimeEmoji(mimeType: string): string {
 
 type MediaFilter = 'all' | 'images' | 'docs' | 'other';
 
-export function renderMediaIndex(db: Database, filter: MediaFilter = 'all'): JSX.Element {
+export function renderMediaIndex(db: GripDb, filter: MediaFilter = 'all'): JSX.Element {
   let files: MediaFile[];
-  const allFiles = listAllMedia(db);
+  const allFiles = db.media.listAll();
 
   if (filter === 'images') {
     files = allFiles.filter(f => f.mime_type.startsWith('image/'));
@@ -220,7 +220,7 @@ export function editorImageWidget(): JSX.Element {
 }
 
 async function saveUpload(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { file: File; altText?: string },
 ): Promise<{ id: string; mimeType: string; alt: string }> {
   const mimeType = deriveMimeType(body.file.name);
@@ -244,12 +244,12 @@ async function saveUpload(
     altText: alt,
   };
   store.append(event);
-  applyEvent(db, event, Date.now());
+  applyEvent(db.raw, event, Date.now());
   return { id, mimeType, alt };
 }
 
 export async function handleMediaUploadJson(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { file: File; altText?: string }
 ): Promise<{ id: string; url: string; alt: string }> {
   const { id, alt } = await saveUpload(db, store, body);
@@ -257,7 +257,7 @@ export async function handleMediaUploadJson(
 }
 
 export async function handleMediaUpload(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { file: File; altText?: string }
 ): Promise<void> {
   await saveUpload(db, store, body);

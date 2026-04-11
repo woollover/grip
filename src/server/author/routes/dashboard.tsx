@@ -1,9 +1,7 @@
-import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
-import { getDashboardStats, getRecentEvents, type EventRow } from '../../data/dashboard';
-import { getArticleById } from '../../data/articles';
-import { getMicroPostById } from '../../data/micro';
+import type { GripDb } from '../../data/index';
+import type { EventRow } from '../../data/dashboard';
 
 function fmtRelative(ms: number): string {
   const diff = Date.now() - ms;
@@ -44,12 +42,12 @@ function greeting(): string {
   return 'Good evening.';
 }
 
-export function renderDashboard(db: Database): JSX.Element {
-  const stats = getDashboardStats(db);
+export function renderDashboard(db: GripDb): JSX.Element {
+  const stats = db.dashboard.getStats();
   const { articleCount, publishedCount, draftCount, microCount, microActiveCount,
           pageCount, pagePublishedCount, mediaCount, imageCount } = stats;
   const microRetractedCount = microCount - microActiveCount;
-  const recentEvents = getRecentEvents(db, 10);
+  const recentEvents = db.dashboard.getRecentEvents(10);
 
   function eventDescription(e: EventRow): JSX.Element {
     try {
@@ -63,7 +61,7 @@ export function renderDashboard(db: Database): JSX.Element {
           if (title) return <span>"{esc(title)}" <em>— article</em></span>;
           const id = (p.id as string | undefined) || '';
           if (id) {
-            const article = getArticleById(db, id);
+            const article = db.articles.getById(id);
             if (article?.title) return <span>"{esc(article.title)}" <em>— article</em></span>;
           }
           return <span><em>article</em></span>;
@@ -76,7 +74,7 @@ export function renderDashboard(db: Database): JSX.Element {
         case 'MicroPostRetracted':
         case 'MicroPostRestored': {
           const id = (p.id as string | undefined) || '';
-          const post = id ? getMicroPostById(db, id) : null;
+          const post = id ? db.micro.getById(id) : null;
           const snippet = post?.body_md?.slice(0, 50) || '';
           return snippet ? <span>"{esc(snippet)}…" <em>— note</em></span> : <em>note</em>;
         }

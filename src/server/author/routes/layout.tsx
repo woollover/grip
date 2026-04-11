@@ -1,18 +1,17 @@
-import type { Database } from "bun:sqlite";
 import { getColorScheme, getThemeVersion } from "../../../core/themes";
-import { getConfigValue } from "../../data/config";
+import type { GripDb } from "../../data/index";
 
 export function authorLayout(
   title: string,
   content: JSX.Element,
-  db?: Database,
+  db?: GripDb,
   activePath?: string,
   fullWidth?: boolean,
   bareLayout?: boolean,
 ): JSX.Element {
-  const scheme = db ? getColorScheme(db) : "light";
-  const themeVersion = db ? getThemeVersion(db) : "default";
-  const apEnabled = db ? !!getConfigValue(db, "ap_enabled") : false;
+  const scheme = db ? getColorScheme(db.raw) : "light";
+  const themeVersion = db ? getThemeVersion(db.raw) : "default";
+  const apEnabled = db ? !!db.config.get("ap_enabled") : false;
 
   function navLink(href: string, label: string): JSX.Element {
     const isActive = activePath === href || (activePath !== undefined && activePath.startsWith(href) && href !== '/dashboard');

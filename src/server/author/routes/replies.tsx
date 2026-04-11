@@ -1,17 +1,12 @@
-import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
-import { paginationNav, esc } from '../../../views/shared';
-import { countFollowers, listFollowers, countReplies, listReplies, toggleReplyStatus } from '../../data/activity';
+import { paginationNav, esc, fmtDate } from '../../../views/shared';
+import type { GripDb } from '../../data/index';
 
 const PAGE_SIZE = 20;
 
-function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-export function renderContactsIndex(db: Database, page = 1): JSX.Element {
-  const total = countFollowers(db);
-  const followers = listFollowers(db, { page, pageSize: PAGE_SIZE });
+export function renderContactsIndex(db: GripDb, page = 1): JSX.Element {
+  const total = db.activity.countFollowers();
+  const followers = db.activity.listFollowers({ page, pageSize: PAGE_SIZE });
 
   function handleToDisplay(uri: string): string {
     try {
@@ -65,9 +60,9 @@ export function renderContactsIndex(db: Database, page = 1): JSX.Element {
   return authorLayout('Contacts', content, db, '/contacts');
 }
 
-export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
-  const total = countReplies(db);
-  const replies = listReplies(db, { page, pageSize: PAGE_SIZE });
+export function renderRepliesIndex(db: GripDb, page = 1): JSX.Element {
+  const total = db.activity.countReplies();
+  const replies = db.activity.listReplies({ page, pageSize: PAGE_SIZE });
 
   const content = (
     <div>
@@ -116,6 +111,6 @@ export function renderRepliesIndex(db: Database, page = 1): JSX.Element {
   return authorLayout('Replies', content, db, '/replies');
 }
 
-export function handleReplyToggle(db: Database, id: string): void {
-  toggleReplyStatus(db, id);
+export function handleReplyToggle(db: GripDb, id: string): void {
+  db.activity.toggleReplyStatus(id);
 }

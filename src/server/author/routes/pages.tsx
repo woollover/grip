@@ -1,4 +1,3 @@
-import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
 import { commitEvent } from '../../../core/projections';
 import { slugify } from '../../../core/utils';
@@ -7,8 +6,7 @@ import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
 import { editorImageWidget } from './media';
 import { AlignPicker } from './shared';
-import { listPagesAdmin, getPageById } from '../../data/pages';
-import { getSiteConfig } from '../../data/config';
+import type { GripDb } from '../../data/index';
 
 const EDITOR_SCRIPT = `(function(){
   var ta=document.querySelector('textarea[name="body"]');
@@ -26,8 +24,8 @@ const EDITOR_SCRIPT = `(function(){
   });
 })();`;
 
-export function renderPagesIndex(db: Database): JSX.Element {
-  const pages = listPagesAdmin(db);
+export function renderPagesIndex(db: GripDb): JSX.Element {
+  const pages = db.pages.listAdmin();
 
   function statusDot(status: string): JSX.Element {
     if (status === 'published') return <span class="sdot sdot-pub" />;
@@ -78,7 +76,7 @@ export function renderPagesIndex(db: Database): JSX.Element {
   return authorLayout('Pages', content, db, '/pages');
 }
 
-export function renderPageNew(db: Database): JSX.Element {
+export function renderPageNew(db: GripDb): JSX.Element {
   const content = (
     <div class="editor-shell">
       <div class="editor-topbar">
@@ -155,20 +153,20 @@ export function renderPageNew(db: Database): JSX.Element {
 }
 
 export function handlePageCreate(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { title: string; slug?: string; body: string }
 ): string {
   const id = ulid();
   const slug = body.slug?.trim() || slugify(body.title);
   const event = { type: 'PageCreated' as const, id, title: body.title, slug, body: body.body };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
   return id;
 }
 
-export function renderPageEdit(db: Database, id: string): JSX.Element {
-  const page = getPageById(db, id);
+export function renderPageEdit(db: GripDb, id: string): JSX.Element {
+  const page = db.pages.getById(id);
   if (!page) return authorLayout('Not found', <p>Page not found.</p>, db, '/pages');
-  const siteHost = getSiteConfig(db).domain;
+  const siteHost = db.config.getSite().domain;
 
   const content = (
     <div class="editor-shell">
@@ -254,14 +252,14 @@ export function renderPageEdit(db: Database, id: string): JSX.Element {
 }
 
 export function handlePageRevise(
-  db: Database, store: EventStore, id: string,
+  db: GripDb, store: EventStore, id: string,
   body: { title?: string; slug?: string; body?: string }
 ): void {
   const event = { type: 'PageRevised' as const, id, title: body.title, slug: body.slug?.trim() || undefined, body: body.body };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
-export function handlePagePublish(db: Database, store: EventStore, id: string): void {
+export function handlePagePublish(db: GripDb, store: EventStore, id: string): void {
   const event = { type: 'PagePublished' as const, id };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }

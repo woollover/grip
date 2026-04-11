@@ -1,6 +1,5 @@
 import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
-import type { Database } from "bun:sqlite";
 import { getThemeCss } from "../../core/themes";
 import { EventStore } from "../../core/events";
 import { renderMd } from "../../core/projections";
@@ -61,7 +60,7 @@ import {
 } from "./routes/reader";
 import type { ApConfig } from "../../activitypub/config";
 import { deliverNewPost } from "../../activitypub/delivery";
-import { getLatestActiveMicroPost } from "../data/micro";
+import type { GripDb } from "../data/index";
 import { log } from "../../core/logger";
 import { version as currentVersion } from "../../../package.json";
 import { execSync } from "child_process";
@@ -74,17 +73,17 @@ const cv = (cookie: Record<string, { value?: unknown } | undefined>) =>
 const parsePage = (q: any) => Math.max(1, parseInt(q?.page ?? '1', 10) || 1);
 
 export function createAuthorApp(
-  db: Database,
+  db: GripDb,
   apCfg?: ApConfig | null,
 ): Elysia {
-  const store = new EventStore(db);
+  const store = new EventStore(db.raw);
 
   const app = new Elysia({ name: "author" });
 
   app.use(staticPlugin({ assets: "public/static", prefix: "/static" }));
 
   app.get("/theme.css", () => {
-    return new Response(getThemeCss(db), {
+    return new Response(getThemeCss(db.raw), {
       headers: {
         "Content-Type": "text/css; charset=utf-8",
         "Cache-Control": "no-cache",
@@ -260,7 +259,7 @@ export function createAuthorApp(
 
     // Fire-and-forget AP delivery for the newly created post
     if (apCfg) {
-      const latest = getLatestActiveMicroPost(db);
+      const latest = db.micro.getLatest();
       if (latest) {
         deliverNewPost(db, apCfg, latest).catch((err) => {
           log.error("[activitypub] Delivery error:", err);

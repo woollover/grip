@@ -1,6 +1,5 @@
 import { Elysia } from "elysia";
 import { staticPlugin } from "@elysiajs/static";
-import type { Database } from "bun:sqlite";
 import { getThemeCss } from "../../core/themes";
 import { renderHome } from "./routes/home";
 import { renderArticlesList, renderArticle } from "./routes/articles";
@@ -11,7 +10,7 @@ import { mountApRoutes } from "../../activitypub/routes";
 import type { ApConfig } from "../../activitypub/config";
 import { renderRssAll, renderRssArticles, renderRssMicro } from "./routes/rss";
 import { render404 } from "../../views/layout";
-import { getSiteConfig } from "../data/config";
+import type { GripDb } from "../data/index";
 
 const SECURITY_HEADERS = {
   "X-Frame-Options": "DENY",
@@ -26,7 +25,7 @@ function html(content: JSX.Element | string): Response {
   });
 }
 
-function notFound(db: Database): Response {
+function notFound(db: GripDb): Response {
   return new Response(render404(db), {
     status: 404,
     headers: { "Content-Type": "text/html; charset=utf-8", ...SECURITY_HEADERS },
@@ -34,7 +33,7 @@ function notFound(db: Database): Response {
 }
 
 export function createPublicApp(
-  db: Database,
+  db: GripDb,
   port: number,
   apCfg?: ApConfig | null,
 ): Elysia {
@@ -44,7 +43,7 @@ export function createPublicApp(
   app.use(staticPlugin({ assets: "public/static", prefix: "/static" }));
 
   app.get("/theme.css", () => {
-    return new Response(getThemeCss(db), {
+    return new Response(getThemeCss(db.raw), {
       headers: {
         "Content-Type": "text/css; charset=utf-8",
         "Cache-Control": "no-cache",
@@ -53,12 +52,12 @@ export function createPublicApp(
   });
 
   app.get("/", () => {
-    const { title, description } = getSiteConfig(db);
+    const { title, description } = db.config.getSite();
     return html(renderHome(db, title, description));
   });
 
   app.get("/articles", ({ query }) => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.showArticles) return notFound(db);
     const tag = query.tag as string | undefined;
     const page = Math.max(1, parseInt(query.page as string) || 1);
@@ -66,7 +65,7 @@ export function createPublicApp(
   });
 
   app.get("/articles/:slug", ({ params }) => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.showArticles) return notFound(db);
     const page = renderArticle(db, params.slug, cfg.title);
     if (!page) return notFound(db);
@@ -74,14 +73,14 @@ export function createPublicApp(
   });
 
   app.get("/micro", ({ query }) => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.showMicro) return notFound(db);
     const page = Math.max(1, parseInt(query.page as string) || 1);
     return html(renderMicroList(db, cfg.title, apCfg, page));
   });
 
   app.get("/micro/:id", ({ params }) => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.showMicro) return notFound(db);
     const page = renderMicroPost(db, params.id, cfg.title, apCfg);
     if (!page) return notFound(db);
@@ -89,7 +88,7 @@ export function createPublicApp(
   });
 
   app.get("/pages/:slug", ({ params }) => {
-    const page = renderPage(db, params.slug, getSiteConfig(db).title);
+    const page = renderPage(db, params.slug, db.config.getSite().title);
     if (!page) return notFound(db);
     return html(page);
   });
@@ -103,19 +102,19 @@ export function createPublicApp(
   const rssHeaders = { "Content-Type": "application/rss+xml; charset=utf-8" };
 
   app.get("/rss.xml", () => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.rssEnabled) return notFound(db);
     return new Response(renderRssAll(db, cfg.domain, cfg.title, cfg.description), { headers: rssHeaders });
   });
 
   app.get("/articles/rss.xml", () => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.rssEnabled || !cfg.showArticles) return notFound(db);
     return new Response(renderRssArticles(db, cfg.domain, cfg.title, cfg.description), { headers: rssHeaders });
   });
 
   app.get("/micro/rss.xml", () => {
-    const cfg = getSiteConfig(db);
+    const cfg = db.config.getSite();
     if (!cfg.rssEnabled || !cfg.showMicro) return notFound(db);
     return new Response(renderRssMicro(db, cfg.domain, cfg.title, cfg.description), { headers: rssHeaders });
   });

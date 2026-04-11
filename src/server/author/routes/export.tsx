@@ -1,12 +1,11 @@
-import type { Database } from 'bun:sqlite';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { authorLayout } from './layout';
 import { runExport } from '../../../cli/commands/export';
-import { getDashboardStats } from '../../data/dashboard';
+import type { GripDb } from '../../data/index';
 
-export function renderExportPage(db: Database): JSX.Element {
-  const stats = getDashboardStats(db);
+export function renderExportPage(db: GripDb): JSX.Element {
+  const stats = db.dashboard.getStats();
   const counts = {
     articles: stats.articleCount,
     micro: stats.microActiveCount,
@@ -66,7 +65,7 @@ export function renderExportPage(db: Database): JSX.Element {
   return authorLayout('Export', content, db, '/export');
 }
 
-export async function handleExportDownload(db: Database): Promise<Response> {
+export async function handleExportDownload(db: GripDb): Promise<Response> {
   const dateStr = new Date().toISOString().slice(0, 10);
   const exportDirName = `grip-export-${dateStr}`;
   const tmpBase = `/tmp/${exportDirName}-${Date.now()}`;
@@ -76,7 +75,7 @@ export async function handleExportDownload(db: Database): Promise<Response> {
 
   try {
     mkdirSync(exportDir, { recursive: true });
-    await runExport(db, exportDir, mediaDir);
+    await runExport(db.raw, exportDir, mediaDir);
 
     const proc = Bun.spawn(['tar', '-czf', tarPath, '-C', tmpBase, exportDirName], {
       stderr: 'inherit',

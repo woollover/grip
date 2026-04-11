@@ -1,19 +1,16 @@
-import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import { fmtDate, esc } from '../../../views/shared';
-import { getSiteConfig } from '../../data/config';
-import { listArticles } from '../../data/articles';
-import { listMicroPosts } from '../../data/micro';
+import type { GripDb } from '../../data/index';
 
-export function renderHome(db: Database, siteTitle: string, siteDescription: string): JSX.Element {
-  const site = getSiteConfig(db);
+export function renderHome(db: GripDb, siteTitle: string, siteDescription: string): JSX.Element {
+  const site = db.config.getSite();
 
   const articles = site.showArticles
-    ? listArticles(db, { pageSize: 8 }).articles
+    ? db.articles.list({ pageSize: 8 }).articles
     : [];
 
   const microPosts = site.showMicro
-    ? listMicroPosts(db, { pageSize: 5 }).posts
+    ? db.micro.list({ pageSize: 5 }).posts
     : [];
 
   const content = (

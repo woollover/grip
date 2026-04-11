@@ -1,10 +1,9 @@
-import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
 import { commitEvent } from '../../../core/projections';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { paginationNav, fmtDate, esc } from '../../../views/shared';
-import { listMicroPostsAdmin } from '../../data/micro';
+import type { GripDb } from '../../data/index';
 
 const PAGE_SIZE = 20;
 
@@ -20,8 +19,8 @@ function fmtRelative(ms: number): string {
   return fmtDate(ms);
 }
 
-export function renderMicroIndex(db: Database, page = 1): JSX.Element {
-  const { posts, total } = listMicroPostsAdmin(db, { page, pageSize: PAGE_SIZE });
+export function renderMicroIndex(db: GripDb, page = 1): JSX.Element {
+  const { posts, total } = db.micro.listAdmin({ page, pageSize: PAGE_SIZE });
 
   const content = (
     <div>
@@ -90,26 +89,26 @@ export function renderMicroIndex(db: Database, page = 1): JSX.Element {
 }
 
 export function handleMicroCreate(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { body: string }
 ): void {
   const id = ulid();
   const event = { type: 'MicroPostCreated' as const, id, body: body.body };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
 export function handleMicroRetract(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   id: string
 ): void {
   const event = { type: 'MicroPostRetracted' as const, id };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
 export function handleMicroRestore(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   id: string
 ): void {
   const event = { type: 'MicroPostRestored' as const, id };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }

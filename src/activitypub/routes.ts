@@ -1,13 +1,11 @@
 import { Elysia } from 'elysia';
-import type { Database } from 'bun:sqlite';
 import type { ApConfig } from './config';
 import { getKeyPair } from './keys';
 import { buildActor, buildNote, buildOrderedCollection } from './objects';
 import type { MicroPostRow } from './objects';
 import { buildOutbox, buildOutboxPage } from './outbox';
 import { handleInbox } from './inbox';
-import { countFollowers } from '../server/data/activity';
-import { getMicroPostForAp } from '../server/data/micro';
+import type { GripDb } from '../server/data/index';
 
 function wantsActivityJson(request: Request): boolean {
   const accept = request.headers.get('Accept') ?? '';
@@ -16,7 +14,7 @@ function wantsActivityJson(request: Request): boolean {
 
 const AP_CONTENT_TYPE = 'application/activity+json; charset=utf-8';
 
-export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
+export function mountApRoutes(app: Elysia, db: GripDb, cfg: ApConfig): void {
   // WebFinger
   app.get('/.well-known/webfinger', ({ query }) => {
     const resource = query.resource;
@@ -48,7 +46,7 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
         headers: { Location: '/micro' },
       });
     }
-    const { publicKeyPem } = await getKeyPair(db);
+    const { publicKeyPem } = await getKeyPair(db.raw);
     return new Response(JSON.stringify(buildActor(cfg, publicKeyPem)), {
       headers: { 'Content-Type': AP_CONTENT_TYPE },
     });
@@ -70,7 +68,7 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
 
   // Followers
   app.get('/activitypub/followers', () => {
-    const collection = buildOrderedCollection(`${cfg.actorUrl}/followers`, [], countFollowers(db));
+    const collection = buildOrderedCollection(`${cfg.actorUrl}/followers`, [], db.activity.countFollowers());
     return new Response(JSON.stringify(collection), {
       headers: { 'Content-Type': AP_CONTENT_TYPE },
     });
@@ -78,7 +76,7 @@ export function mountApRoutes(app: Elysia, db: Database, cfg: ApConfig): void {
 
   // Individual Note
   app.get('/activitypub/notes/:id', ({ params, request }) => {
-    const post = getMicroPostForAp(db, params.id) as MicroPostRow | null;
+    const post = db.micro.getForAp(params.id) as MicroPostRow | null;
 
     if (!post) {
       return new Response('Not Found', { status: 404 });

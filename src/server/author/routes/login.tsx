@@ -1,14 +1,13 @@
-import type { Database } from "bun:sqlite";
 import { getColorScheme } from "../../../core/themes";
-import { getConfigValue } from "../../data/config";
+import type { GripDb } from "../../data/index";
 
 export function renderLoginPage(
   badPassword: boolean,
   lockedOut: boolean,
-  db?: Database,
+  db?: GripDb,
 ): string {
-  const scheme = db ? getColorScheme(db) : "light";
-  const siteTitle = db ? (getConfigValue(db, "site_title", "GRIP") ?? "GRIP") : "GRIP";
+  const scheme = db ? getColorScheme(db.raw) : "light";
+  const siteTitle = db ? (db.config.get("site_title", "GRIP") ?? "GRIP") : "GRIP";
 
   const page = (
     <html lang="en" data-theme={scheme}>

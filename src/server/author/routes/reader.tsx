@@ -1,7 +1,7 @@
-import type { Database } from 'bun:sqlite';
 import type { ApConfig } from '../../../activitypub/config';
 import { authorLayout } from './layout';
-import { paginationNav } from '../../../views/shared';
+import { paginationNav, fmtDate } from '../../../views/shared';
+import type { GripDb } from '../../data/index';
 import {
   getRssSubs, getRssSubById, getRssSubByUrl,
   addRssSub, updateRssSubMeta, deleteRssSub,
@@ -16,10 +16,6 @@ import { resolveActor, fetchActorOutbox, sendFollowActivity, sendUnfollowActivit
 const PAGE_SIZE = 20;
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
-
-function fmtDate(ms: number): string {
-  return new Date(ms).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
-}
 
 function fmtRelative(ms: number): string {
   const diff = Date.now() - ms;
@@ -41,12 +37,12 @@ function preview(html: string, max = 280): string {
 
 // ── Reader home ────────────────────────────────────────────────────────────────
 
-export function renderReaderHome(db: Database, page: number): JSX.Element {
+export function renderReaderHome(db: GripDb, page: number): JSX.Element {
   const offset = (page - 1) * PAGE_SIZE;
-  const total = countReaderItems(db);
-  const items = getReaderItems(db, { limit: PAGE_SIZE, offset });
-  const rssSubs = getRssSubs(db);
-  const apSubs = getApFollowing(db);
+  const total = countReaderItems(db.raw);
+  const items = getReaderItems(db.raw, { limit: PAGE_SIZE, offset });
+  const rssSubs = getRssSubs(db.raw);
+  const apSubs = getApFollowing(db.raw);
   const hasAnySub = rssSubs.length > 0 || apSubs.length > 0;
 
   const sidebar = (
@@ -165,8 +161,8 @@ function ReaderItemCard({ item }: { item: ReaderItem }): JSX.Element {
 
 // ── RSS Subscriptions ──────────────────────────────────────────────────────────
 
-export function renderRssIndex(db: Database): JSX.Element {
-  const subs = getRssSubs(db);
+export function renderRssIndex(db: GripDb): JSX.Element {
+  const subs = getRssSubs(db.raw);
 
   const content = (
     <div>
@@ -222,8 +218,8 @@ export function renderRssIndex(db: Database): JSX.Element {
 
 // ── AP Following ───────────────────────────────────────────────────────────────
 
-export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JSX.Element {
-  const following = getApFollowing(db);
+export function renderApFollowingIndex(db: GripDb, apCfg: ApConfig | null): JSX.Element {
+  const following = getApFollowing(db.raw);
   const apEnabled = !!apCfg;
 
   const content = (
@@ -294,14 +290,14 @@ export function renderApFollowingIndex(db: Database, apCfg: ApConfig | null): JS
 
 // ── Handlers ───────────────────────────────────────────────────────────────────
 
-export async function handleRssSubscribe(db: Database, url: string): Promise<void> {
-  const existing = getRssSubByUrl(db, url);
+export async function handleRssSubscribe(db: GripDb, url: string): Promise<void> {
+  const existing = getRssSubByUrl(db.raw, url);
   if (existing) return; // already subscribed
 
   const feed = await fetchFeed(url);
-  const id = addRssSub(db, url, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
+  const id = addRssSub(db.raw, url, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
 
-  upsertReaderItems(db, 'rss', id, feed.items.map(i => ({
+  upsertReaderItems(db.raw, 'rss', id, feed.items.map(i => ({
     guid: i.guid,
     itemUrl: i.url,
     title: i.title,
@@ -310,15 +306,15 @@ export async function handleRssSubscribe(db: Database, url: string): Promise<voi
     publishedAt: i.publishedAt,
   })));
 
-  updateRssSubMeta(db, id, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
+  updateRssSubMeta(db.raw, id, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
 }
 
-export async function handleRssRefresh(db: Database, id: string): Promise<void> {
-  const sub = getRssSubById(db, id);
+export async function handleRssRefresh(db: GripDb, id: string): Promise<void> {
+  const sub = getRssSubById(db.raw, id);
   if (!sub) return;
 
   const feed = await fetchFeed(sub.url);
-  upsertReaderItems(db, 'rss', id, feed.items.map(i => ({
+  upsertReaderItems(db.raw, 'rss', id, feed.items.map(i => ({
     guid: i.guid,
     itemUrl: i.url,
     title: i.title,
@@ -326,21 +322,21 @@ export async function handleRssRefresh(db: Database, id: string): Promise<void> 
     author: i.author,
     publishedAt: i.publishedAt,
   })));
-  updateRssSubMeta(db, id, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
+  updateRssSubMeta(db.raw, id, feed.meta.title, feed.meta.description, feed.meta.siteUrl);
 }
 
-export function handleRssDelete(db: Database, id: string): void {
-  deleteRssSub(db, id);
+export function handleRssDelete(db: GripDb, id: string): void {
+  deleteRssSub(db.raw, id);
 }
 
 export async function handleApFollow(
-  db: Database,
+  db: GripDb,
   actorInput: string,
   apCfg: ApConfig | null,
 ): Promise<void> {
-  const actor = await resolveActor(actorInput, db, apCfg);
+  const actor = await resolveActor(actorInput, db.raw, apCfg);
 
-  const existing = getApFollowingByActorUrl(db, actor.actorUrl);
+  const existing = getApFollowingByActorUrl(db.raw, actor.actorUrl);
   if (existing) {
     // Already following — just refresh their outbox
     await handleApRefreshById(db, existing.id, apCfg);
@@ -349,7 +345,7 @@ export async function handleApFollow(
 
   const followState: ApFollowing['follow_state'] = apCfg ? 'pending' : 'none';
   const id = addApFollowing(
-    db,
+    db.raw,
     actor.actorUrl,
     actor.username,
     actor.displayName,
@@ -362,7 +358,7 @@ export async function handleApFollow(
   // Send Follow activity if AP is enabled
   if (apCfg && actor.inboxUrl) {
     try {
-      await sendFollowActivity(db, apCfg, actor.actorUrl, actor.inboxUrl);
+      await sendFollowActivity(db.raw, apCfg, actor.actorUrl, actor.inboxUrl);
     } catch (err) {
       console.error('[reader] Follow activity delivery failed:', err);
       // Don't abort — we still fetch the outbox
@@ -371,26 +367,26 @@ export async function handleApFollow(
 
   // Fetch outbox for immediate content
   try {
-    const items = await fetchActorOutbox(actor.actorUrl, db, apCfg);
-    upsertReaderItems(db, 'ap', id, items);
-    updateApFollowingFetched(db, id, Date.now());
+    const items = await fetchActorOutbox(actor.actorUrl, db.raw, apCfg);
+    upsertReaderItems(db.raw, 'ap', id, items);
+    updateApFollowingFetched(db.raw, id, Date.now());
   } catch (err) {
     console.error('[reader] Outbox fetch failed:', err);
   }
 }
 
 export async function handleApRefreshById(
-  db: Database,
+  db: GripDb,
   id: string,
   apCfg: ApConfig | null,
 ): Promise<void> {
-  const following = getApFollowingById(db, id);
+  const following = getApFollowingById(db.raw, id);
   if (!following) return;
 
   try {
-    const items = await fetchActorOutbox(following.actor_url, db, apCfg);
-    upsertReaderItems(db, 'ap', id, items);
-    updateApFollowingFetched(db, id, Date.now());
+    const items = await fetchActorOutbox(following.actor_url, db.raw, apCfg);
+    upsertReaderItems(db.raw, 'ap', id, items);
+    updateApFollowingFetched(db.raw, id, Date.now());
   } catch (err) {
     console.error('[reader] AP refresh failed:', err);
     throw err;
@@ -398,18 +394,18 @@ export async function handleApRefreshById(
 }
 
 export async function handleApUnfollow(
-  db: Database,
+  db: GripDb,
   id: string,
   apCfg: ApConfig | null,
 ): Promise<void> {
-  const following = getApFollowingById(db, id);
+  const following = getApFollowingById(db.raw, id);
   if (!following) return;
 
   // Send Undo Follow if AP is configured and we actually sent a Follow
   if (apCfg && following.follow_state !== 'none' && following.inbox_url) {
-    sendUnfollowActivity(db, apCfg, following.actor_url, following.inbox_url)
+    sendUnfollowActivity(db.raw, apCfg, following.actor_url, following.inbox_url)
       .catch(err => console.error('[reader] Unfollow delivery failed:', err));
   }
 
-  deleteApFollowing(db, id);
+  deleteApFollowing(db.raw, id);
 }

@@ -1,12 +1,10 @@
-import type { Database } from 'bun:sqlite';
 import type { EventStore } from '../../../core/events';
 import { commitEvent } from '../../../core/projections';
 import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { paginationNav, fmtDate, esc } from '../../../views/shared';
-import { countArticlesByStatus, listArticlesAdmin, getArticleById } from '../../data/articles';
-import { getSiteConfig } from '../../data/config';
+import type { GripDb } from '../../data/index';
 import { editorImageWidget } from './media';
 
 const PAGE_SIZE = 20;
@@ -56,8 +54,8 @@ const EDITOR_SCRIPT = `(function(){
 
 type StatusFilter = 'all' | 'published' | 'draft' | 'unpublished';
 
-export function renderArticlesIndex(db: Database, page = 1, statusFilter: StatusFilter = 'all'): JSX.Element {
-  const counts = countArticlesByStatus(db);
+export function renderArticlesIndex(db: GripDb, page = 1, statusFilter: StatusFilter = 'all'): JSX.Element {
+  const counts = db.articles.countByStatus();
   const { countAll, countPublished, countDraft, countUnpub } = {
     countAll: counts.all,
     countPublished: counts.published,
@@ -65,7 +63,7 @@ export function renderArticlesIndex(db: Database, page = 1, statusFilter: Status
     countUnpub: counts.unpublished,
   };
 
-  const { articles, total } = listArticlesAdmin(db, { page, status: statusFilter, pageSize: PAGE_SIZE });
+  const { articles, total } = db.articles.listAdmin({ page, status: statusFilter, pageSize: PAGE_SIZE });
 
   function tabLink(filter: StatusFilter, label: string, count: number): JSX.Element {
     const isActive = statusFilter === filter;
@@ -139,7 +137,7 @@ export function renderArticlesIndex(db: Database, page = 1, statusFilter: Status
   return authorLayout('Articles', content, db, '/articles');
 }
 
-export function renderArticleNew(db: Database): JSX.Element {
+export function renderArticleNew(db: GripDb): JSX.Element {
   const content = (
     <div class="editor-shell">
       <div class="editor-topbar">
@@ -208,21 +206,21 @@ export function renderArticleNew(db: Database): JSX.Element {
 }
 
 export function handleArticleCreate(
-  db: Database, store: EventStore,
+  db: GripDb, store: EventStore,
   body: { title: string; slug?: string; body: string; tags?: string }
 ): string {
   const id = ulid();
   const slug = body.slug?.trim() || slugify(body.title);
   const tags = (body.tags ?? '').split(',').map(t => t.trim()).filter(Boolean);
   const event = { type: 'ArticleCreated' as const, id, title: body.title, slug, body: body.body, tags };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
   return id;
 }
 
-export function renderArticleEdit(db: Database, id: string): JSX.Element {
-  const article = getArticleById(db, id);
+export function renderArticleEdit(db: GripDb, id: string): JSX.Element {
+  const article = db.articles.getById(id);
   if (!article) return authorLayout('Not found', <p>Article not found.</p>, db, '/articles');
-  const siteHost = getSiteConfig(db).domain;
+  const siteHost = db.config.getSite().domain;
 
   const content = (
     <div class="editor-shell">
@@ -311,20 +309,20 @@ export function renderArticleEdit(db: Database, id: string): JSX.Element {
 }
 
 export function handleArticleRevise(
-  db: Database, store: EventStore, id: string,
+  db: GripDb, store: EventStore, id: string,
   body: { title: string; body: string; tags?: string }
 ): void {
   const tags = (body.tags ?? '').split(',').map(t => t.trim()).filter(Boolean);
   const event = { type: 'ArticleRevised' as const, id, title: body.title, body: body.body, tags };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
-export function handleArticlePublish(db: Database, store: EventStore, id: string): void {
+export function handleArticlePublish(db: GripDb, store: EventStore, id: string): void {
   const event = { type: 'ArticlePublished' as const, id };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
-export function handleArticleUnpublish(db: Database, store: EventStore, id: string): void {
+export function handleArticleUnpublish(db: GripDb, store: EventStore, id: string): void {
   const event = { type: 'ArticleUnpublished' as const, id };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }

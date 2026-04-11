@@ -75,6 +75,9 @@ coverage/
 .nyc_output/
 *.lcov
 
+# ─── Design files (Pencil .pen) — local only ────────────────────────────────────
+.design/
+
 # ─── Claude Code (session state, not project config) ────────────────────────────
 # Keep: .claude/agents/, .claude/CLAUDE.md, .claude/MANIFESTO.md, .claude/settings.json
 # Ignore: runtime/session state

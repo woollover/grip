@@ -1,9 +1,8 @@
-import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
-import { getPage } from '../../data/pages';
+import type { GripDb } from '../../data/index';
 
-export function renderPage(db: Database, slug: string, siteTitle: string): JSX.Element | null {
-  const page = getPage(db, slug);
+export function renderPage(db: GripDb, slug: string, siteTitle: string): JSX.Element | null {
+  const page = db.pages.get(slug);
   if (!page) return null;
 
   const content = (

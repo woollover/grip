@@ -1,14 +1,12 @@
-import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import type { ApConfig } from '../../../activitypub/config';
 import { paginationNav, esc } from '../../../views/shared';
-import { listMicroPosts, getMicroPost } from '../../data/micro';
-import { listRepliesByNote } from '../../data/activity';
+import type { GripDb } from '../../data/index';
 
 const PAGE_SIZE = 20;
 
-function renderReplies(db: Database, noteId: string): JSX.Element {
-  const replies = listRepliesByNote(db, noteId);
+function renderReplies(db: GripDb, noteId: string): JSX.Element {
+  const replies = db.activity.listRepliesByNote(noteId);
   if (replies.length === 0) return '' as unknown as JSX.Element;
 
   return (
@@ -26,8 +24,8 @@ function renderReplies(db: Database, noteId: string): JSX.Element {
   );
 }
 
-export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfig | null, page = 1): JSX.Element {
-  const { posts, total } = listMicroPosts(db, { page, pageSize: PAGE_SIZE });
+export function renderMicroList(db: GripDb, siteTitle: string, apCfg?: ApConfig | null, page = 1): JSX.Element {
+  const { posts, total } = db.micro.list({ page, pageSize: PAGE_SIZE });
   const showReplies = apCfg?.acceptReplies === true;
 
   const content = (
@@ -54,8 +52,8 @@ export function renderMicroList(db: Database, siteTitle: string, apCfg?: ApConfi
   return publicLayout({ title: 'Notes', siteTitle, db, activePath: '/micro' }, content);
 }
 
-export function renderMicroPost(db: Database, id: string, siteTitle: string, apCfg?: ApConfig | null): JSX.Element | null {
-  const post = getMicroPost(db, id);
+export function renderMicroPost(db: GripDb, id: string, siteTitle: string, apCfg?: ApConfig | null): JSX.Element | null {
+  const post = db.micro.get(id);
   if (!post) return null;
 
   const showReplies = apCfg?.acceptReplies === true;

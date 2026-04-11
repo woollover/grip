@@ -1,4 +1,3 @@
-import type { Database } from 'bun:sqlite';
 import type { ApConfig } from './config';
 import { verifyInboundSignature, signRequest, signGetRequest, isSafeApUrl } from './signatures';
 import { log } from '../core/logger';
@@ -8,17 +7,16 @@ import type { MicroPostRow } from './objects';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
 import { getApFollowingByActorUrl, updateApFollowingState, syncFollowsUs, upsertReaderItems } from '../reader/store';
-import { insertFollower, deleteFollower, insertReply, deleteReply } from '../server/data/activity';
-import { getActiveMicroPostsForAp } from '../server/data/micro';
+import type { GripDb } from '../server/data/index';
 
 export async function handleInbox(
-  db: Database,
+  db: GripDb,
   cfg: ApConfig,
   request: Request,
 ): Promise<Response> {
   let actorUri: string;
   try {
-    const { privateKey } = await getKeyPair(db);
+    const { privateKey } = await getKeyPair(db.raw);
     const ownKeyId = `${cfg.actorUrl}#main-key`;
     actorUri = await verifyInboundSignature(request, ownKeyId, privateKey);
   } catch (err) {
@@ -70,7 +68,7 @@ export async function handleInbox(
 }
 
 async function handleFollow(
-  db: Database,
+  db: GripDb,
   cfg: ApConfig,
   activity: any,
   actorUri: string,
@@ -84,7 +82,7 @@ async function handleFollow(
   // Fetch the follower's actor document to get their inbox URL
   let inboxUrl: string;
   try {
-    const { privateKey } = await getKeyPair(db);
+    const { privateKey } = await getKeyPair(db.raw);
     const ownKeyId = `${cfg.actorUrl}#main-key`;
     const fetchHeaders: Record<string, string> = { Accept: 'application/activity+json' };
     await signGetRequest({ url: new URL(actorUri), keyId: ownKeyId, privateKey, headers: fetchHeaders });
@@ -106,10 +104,10 @@ async function handleFollow(
   }
 
   // If we're following this actor, mark that they follow us back
-  syncFollowsUs(db, actorUri, true);
+  syncFollowsUs(db.raw, actorUri, true);
 
   // Upsert follower
-  insertFollower(db, actorUri, inboxUrl);
+  db.activity.insertFollower(actorUri, inboxUrl);
 
   // Build and send Accept
   const acceptId = `${cfg.baseUrl}/activitypub/activities/${ulid()}`;
@@ -117,7 +115,7 @@ async function handleFollow(
   const body = JSON.stringify(accept);
 
   try {
-    const keyPair = await getKeyPair(db);
+    const keyPair = await getKeyPair(db.raw);
     const url = new URL(inboxUrl);
     const headers: Record<string, string> = {
       'Content-Type': 'application/activity+json',
@@ -145,11 +143,11 @@ async function handleFollow(
   });
 }
 
-async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): Promise<void> {
-  const posts = getActiveMicroPostsForAp(db, 10) as MicroPostRow[];
+async function deliverBackfill(db: GripDb, cfg: ApConfig, inboxUrl: string): Promise<void> {
+  const posts = db.micro.listForAp(10) as MicroPostRow[];
   if (posts.length === 0) return;
 
-  const keyPair = await getKeyPair(db);
+  const keyPair = await getKeyPair(db.raw);
   const keyId = `${cfg.actorUrl}#main-key`;
   const url = new URL(inboxUrl);
 
@@ -173,14 +171,14 @@ async function deliverBackfill(db: Database, cfg: ApConfig, inboxUrl: string): P
   }
 }
 
-function handleUndo(db: Database, activity: any, actorUri: string): void {
+function handleUndo(db: GripDb, activity: any, actorUri: string): void {
   const inner = activity.object;
   if (!inner || inner.type !== 'Follow') return;
-  deleteFollower(db, actorUri);
+  db.activity.deleteFollower(actorUri);
 }
 
 async function handleCreateReply(
-  db: Database,
+  db: GripDb,
   cfg: ApConfig,
   activity: any,
   actorUri: string,
@@ -200,7 +198,7 @@ async function handleCreateReply(
   let actorName = actorUri;
   if (isSafeApUrl(actorUri)) {
     try {
-      const { privateKey } = await getKeyPair(db);
+      const { privateKey } = await getKeyPair(db.raw);
       const ownKeyId = `${cfg.actorUrl}#main-key`;
       const fetchHeaders: Record<string, string> = { Accept: 'application/activity+json' };
       await signGetRequest({ url: new URL(actorUri), keyId: ownKeyId, privateKey, headers: fetchHeaders });
@@ -220,19 +218,19 @@ async function handleCreateReply(
     }
   }
 
-  insertReply(db, note.id || ulid(), noteId, actorUri, actorName, content, Date.now(), 'visible');
+  db.activity.insertReply(note.id || ulid(), noteId, actorUri, actorName, content, Date.now(), 'visible');
 }
 
 /** Handle Accept — remote server accepted our Follow request. */
-function handleAccept(db: Database, activity: any, actorUri: string): void {
+function handleAccept(db: GripDb, activity: any, actorUri: string): void {
   const inner = activity.object;
   if (!inner || inner.type !== 'Follow') return;
-  updateApFollowingState(db, actorUri, 'accepted');
+  updateApFollowingState(db.raw, actorUri, 'accepted');
 }
 
 /** Store push-delivered posts from actors we're following into reader_items. */
-function handleCreateFromFollowed(db: Database, activity: any, actorUri: string): void {
-  const following = getApFollowingByActorUrl(db, actorUri);
+function handleCreateFromFollowed(db: GripDb, activity: any, actorUri: string): void {
+  const following = getApFollowingByActorUrl(db.raw, actorUri);
   if (!following) return; // not following this actor
 
   const note = activity.object;
@@ -247,7 +245,7 @@ function handleCreateFromFollowed(db: Database, activity: any, actorUri: string)
   const url = typeof note.url === 'string' ? note.url : note.id ?? '';
   const sanitized = sanitizeHtml(note.content ?? '');
 
-  upsertReaderItems(db, 'ap', following.id, [{
+  upsertReaderItems(db.raw, 'ap', following.id, [{
     guid: note.id ?? url,
     itemUrl: url,
     title: '',
@@ -257,9 +255,9 @@ function handleCreateFromFollowed(db: Database, activity: any, actorUri: string)
   }]);
 }
 
-function handleDelete(db: Database, activity: any): void {
+function handleDelete(db: GripDb, activity: any): void {
   const objectId =
     typeof activity.object === 'string' ? activity.object : activity.object?.id;
   if (!objectId) return;
-  deleteReply(db, objectId);
+  db.activity.deleteReply(objectId);
 }

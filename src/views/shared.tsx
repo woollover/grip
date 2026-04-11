@@ -17,9 +17,6 @@
  * use esc() or ensure it passed through sanitizeHtml() before storage.
  */
 
-import type { Database } from 'bun:sqlite';
-import { getConfigValue } from '../server/data/config';
-
 // ── Escaping helpers ────────────────────────────────────────────────────────
 
 /** Explicitly escape a string for safe HTML interpolation. */
@@ -38,24 +35,6 @@ export function esc(str: string): string {
  */
 export function raw(html: string): string {
   return html;
-}
-
-// ── Publicity config (single source of truth) ────────────────────────────────
-
-export interface PublicityConfig {
-  showArticles: boolean;
-  showMicro: boolean;
-  rssEnabled: boolean;
-}
-
-export function readPublicity(db: Database): PublicityConfig {
-  const get = (key: string, fallback: string) => getConfigValue(db, key, fallback)!;
-  const isPrivate = get('publicity_mode', 'public') === 'private';
-  return {
-    showArticles: !isPrivate && get('show_articles', '1') === '1',
-    showMicro:    !isPrivate && get('show_micro',    '1') === '1',
-    rssEnabled:   !isPrivate && get('rss_enabled',   '1') === '1',
-  };
 }
 
 // ── Date formatting ──────────────────────────────────────────────────────────

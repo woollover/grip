@@ -1,4 +1,3 @@
-import type { Database } from "bun:sqlite";
 import type { EventStore } from "../../../core/events";
 import { commitEvent } from "../../../core/projections";
 import { authorLayout } from "./layout";
@@ -9,60 +8,28 @@ import {
   readThemeCustom,
 } from "../../../core/themes";
 import { version as currentVersion } from "../../../../package.json";
-import { getConfigValue, setConfigValue } from "../../data/config";
-import { countFollowers } from "../../data/activity";
+import type { GripDb } from "../../data/index";
 
-function getConfig(db: Database): {
-  title: string;
-  description: string;
-  domain: string;
-  homeIntro: string;
-} {
-  return {
-    title:       getConfigValue(db, "site_title",    "My GRIP")!,
-    description: getConfigValue(db, "site_description", "")!,
-    domain:      getConfigValue(db, "domain",        "localhost")!,
-    homeIntro:   getConfigValue(db, "home_intro",    "")!,
-  };
-}
-
-function getPublicitySettings(db: Database) {
-  const get = (key: string, fallback: string) => getConfigValue(db, key, fallback)!;
-  return {
-    mode:         get("publicity_mode", "public") as "public" | "private",
-    showArticles: get("show_articles",  "1") === "1",
-    showMicro:    get("show_micro",     "1") === "1",
-    rssEnabled:   get("rss_enabled",    "1") === "1",
-  };
-}
-
-export function handlePublicityUpdate(db: Database, body: any): void {
+export function handlePublicityUpdate(db: GripDb, body: any): void {
   const mode = body.publicity_mode === "private" ? "private" : "public";
-  setConfigValue(db, "publicity_mode", mode);
-  setConfigValue(db, "show_articles",  body.show_articles === "1" ? "1" : "0");
-  setConfigValue(db, "show_micro",     body.show_micro    === "1" ? "1" : "0");
-  setConfigValue(db, "rss_enabled",    body.rss_enabled   === "1" ? "1" : "0");
+  db.config.set("publicity_mode", mode);
+  db.config.set("show_articles",  body.show_articles === "1" ? "1" : "0");
+  db.config.set("show_micro",     body.show_micro    === "1" ? "1" : "0");
+  db.config.set("rss_enabled",    body.rss_enabled   === "1" ? "1" : "0");
 }
 
-function getApStatus(db: Database): {
-  enabled: boolean;
-  username: string;
-  domain: string;
-  contacts: number;
-} | null {
-  if (!getConfigValue(db, "ap_enabled")) return null;
-  return {
-    enabled:  true,
-    username: getConfigValue(db, "ap_username", "")!,
-    domain:   getConfigValue(db, "domain",      "localhost")!,
-    contacts: countFollowers(db),
-  };
-}
-
-export function renderSettings(db: Database): JSX.Element {
-  const config = getConfig(db);
-  const ap = getApStatus(db);
-  const pub = getPublicitySettings(db);
+export function renderSettings(db: GripDb): JSX.Element {
+  const site = db.config.getSite();
+  const config = { title: site.title, description: site.description, domain: site.domain, homeIntro: site.homeIntro };
+  const pubRaw = db.config.getPublicity();
+  const pub = { mode: pubRaw.isPrivate ? "private" : "public" as "public" | "private", showArticles: pubRaw.showArticles, showMicro: pubRaw.showMicro, rssEnabled: pubRaw.rssEnabled };
+  const apEnabled = db.config.get("ap_enabled");
+  const ap = apEnabled ? {
+    enabled: true,
+    username: db.config.get("ap_username", "")!,
+    domain: db.config.get("domain", "localhost")!,
+    contacts: db.activity.countFollowers(),
+  } : null;
 
   const apSection = ap ? (
     <section>
@@ -446,9 +413,9 @@ function KitchenSink(): JSX.Element {
   );
 }
 
-export function renderThemeSettings(db: Database): JSX.Element {
-  const currentTheme = (getConfigValue(db, "theme", "terracotta") ?? "terracotta") as ThemeName;
-  const custom = readThemeCustom(db);
+export function renderThemeSettings(db: GripDb): JSX.Element {
+  const currentTheme = (db.config.get("theme", "terracotta") ?? "terracotta") as ThemeName;
+  const custom = readThemeCustom(db.raw);
   const defaults = PRESET_DEFAULTS[currentTheme] ?? PRESET_DEFAULTS.terracotta;
 
   const eff = {
@@ -868,7 +835,7 @@ export function renderThemeSettings(db: Database): JSX.Element {
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 export function handleSiteConfigUpdate(
-  db: Database,
+  db: GripDb,
   store: EventStore,
   body: { title?: string; description?: string; domain?: string; homeIntro?: string },
 ): void {
@@ -879,11 +846,11 @@ export function handleSiteConfigUpdate(
     domain: body.domain?.trim(),
     homeIntro: body.homeIntro?.trim(),
   };
-  commitEvent(db, store, event);
+  commitEvent(db.raw, store, event);
 }
 
 export function handleThemeChange(
-  db: Database,
+  db: GripDb,
   _store: EventStore,
   body: {
     theme?: string;
@@ -910,7 +877,7 @@ export function handleThemeChange(
   const theme = validThemes.includes(body.theme as ThemeName)
     ? (body.theme as ThemeName)
     : "terracotta";
-  setConfigValue(db, "theme", theme);
+  db.config.set("theme", theme);
 
   const custom: ThemeCustom = {};
   // colorScheme is derived from the preset, not user-editable directly
@@ -929,7 +896,7 @@ export function handleThemeChange(
   const darkPresets: ThemeName[] = ["obsidian", "terminal", "neon"];
   custom.colorScheme = darkPresets.includes(theme) ? "dark" : "light";
 
-  setConfigValue(db, "theme_custom", JSON.stringify(custom));
+  db.config.set("theme_custom", JSON.stringify(custom));
 }
 
 function isHexColor(s: string | undefined): boolean {

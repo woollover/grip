@@ -1,20 +1,19 @@
-import type { Database } from 'bun:sqlite';
 import type { ApConfig } from './config';
 import type { MicroPostRow } from './objects';
 import { buildNote, buildCreateActivity } from './objects';
 import { signRequest } from './signatures';
 import { getKeyPair } from './keys';
 import { ulid } from 'ulidx';
-import { listAllFollowers } from '../server/data/activity';
+import type { GripDb } from '../server/data/index';
 
 export async function deliverNewPost(
-  db: Database,
+  db: GripDb,
   cfg: ApConfig,
   post: MicroPostRow,
 ): Promise<void> {
   let keyPair: { privateKey: CryptoKey; publicKeyPem: string };
   try {
-    keyPair = await getKeyPair(db);
+    keyPair = await getKeyPair(db.raw);
   } catch (err) {
     console.error('[activitypub] Failed to load key pair for delivery:', err);
     return;
@@ -25,7 +24,7 @@ export async function deliverNewPost(
   const activity = buildCreateActivity(cfg, note, activityId);
   const body = JSON.stringify(activity);
 
-  const followers = listAllFollowers(db);
+  const followers = db.activity.listAllFollowers();
 
   if (followers.length === 0) return;
 

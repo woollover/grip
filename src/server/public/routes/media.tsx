@@ -1,9 +1,8 @@
-import type { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
-import { getMediaById } from '../../data/media';
+import type { GripDb } from '../../data/index';
 
-export function serveMedia(db: Database, id: string): Response | null {
-  const file = getMediaById(db, id);
+export function serveMedia(db: GripDb, id: string): Response | null {
+  const file = db.media.getById(id);
   if (!file) return null;
 
   try {

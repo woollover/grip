@@ -8,7 +8,7 @@ import { ensureKeyPair } from './activitypub/keys';
 import { existsSync } from 'fs';
 import { log } from './core/logger';
 import type { LogLevel } from './core/logger';
-import { setConfigValue, deleteConfigKey } from './server/data/config';
+import { GripDb } from './server/data/index';
 
 interface GripConfig {
   server: { public_port: number; author_port: number; domain: string };
@@ -66,22 +66,23 @@ export async function main(): Promise<void> {
   }
 
   // Init DB and rebuild projections synchronously before binding ports
-  const db = getDb(config.data.db_path);
-  const store = new EventStore(db);
+  const rawDb = getDb(config.data.db_path);
+  const db = new GripDb(rawDb);
+  const store = new EventStore(rawDb);
   const allEvents = store.all();
   log.info(`Replaying ${allEvents.length} events to rebuild projections…`);
-  rebuild(db, allEvents);
+  rebuild(rawDb, allEvents);
   log.info('Projections ready.');
 
   // ActivityPub (opt-in)
   const apCfg = loadApConfig(rawToml, config.server.domain);
   if (apCfg) {
-    await ensureKeyPair(db);
-    setConfigValue(db, 'ap_enabled', '1');
-    setConfigValue(db, 'ap_username', apCfg.username);
+    await ensureKeyPair(rawDb);
+    db.config.set('ap_enabled', '1');
+    db.config.set('ap_username', apCfg.username);
     log.info(`ActivityPub enabled as @${apCfg.username}@${apCfg.domain}`);
   } else {
-    deleteConfigKey(db, 'ap_enabled');
+    db.config.delete('ap_enabled');
   }
 
   // Start both servers

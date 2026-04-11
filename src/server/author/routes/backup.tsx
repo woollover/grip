@@ -1,8 +1,8 @@
-import type { Database } from 'bun:sqlite';
 import { authorLayout } from './layout';
 import { runBackup } from '../../../cli/commands/backup';
+import type { GripDb } from '../../data/index';
 
-export function renderBackupPage(db: Database): JSX.Element {
+export function renderBackupPage(db: GripDb): JSX.Element {
   const content = (
     <div style="max-width:640px">
       <div class="page-hd">
@@ -40,13 +40,13 @@ systemctl start grip`}</code></pre>
   return authorLayout('Backup', content, db, '/backup');
 }
 
-export async function handleBackupDownload(db: Database): Promise<Response> {
+export async function handleBackupDownload(db: GripDb): Promise<Response> {
   const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const outFile = `/tmp/grip-backup-${dateStr}-${Date.now()}.tar.gz`;
   const mediaDir = `${process.cwd()}/media`;
 
   try {
-    await runBackup(db, outFile, mediaDir);
+    await runBackup(db.raw, outFile, mediaDir);
     const buf = await Bun.file(outFile).arrayBuffer();
     return new Response(buf, {
       headers: {

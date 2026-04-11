@@ -1,6 +1,6 @@
-import type { Database } from 'bun:sqlite';
-import { listArticles } from '../../data/articles';
-import { listMicroPosts } from '../../data/micro';
+import type { GripDb } from '../../data/index';
+import type { Article } from '../../data/articles';
+import type { MicroPost } from '../../data/micro';
 
 interface FeedItem {
   title: string;
@@ -11,7 +11,7 @@ interface FeedItem {
   description: string;
 }
 
-function articleItem(a: ReturnType<typeof listArticles>['articles'][number], baseUrl: string): FeedItem {
+function articleItem(a: Article, baseUrl: string): FeedItem {
   return {
     title: a.title,
     link: `${baseUrl}/articles/${a.slug}`,
@@ -22,7 +22,7 @@ function articleItem(a: ReturnType<typeof listArticles>['articles'][number], bas
   };
 }
 
-function microItem(m: ReturnType<typeof listMicroPosts>['posts'][number], baseUrl: string): FeedItem {
+function microItem(m: MicroPost, baseUrl: string): FeedItem {
   const text = m.body_md.replace(/\s+/g, ' ').trim();
   const title = text.length > 80 ? text.slice(0, 77) + '…' : text;
   return {
@@ -66,10 +66,10 @@ function buildFeed(
 </rss>`;
 }
 
-export function renderRssAll(db: Database, domain: string, siteTitle: string, siteDescription: string): string {
+export function renderRssAll(db: GripDb, domain: string, siteTitle: string, siteDescription: string): string {
   const baseUrl = `https://${domain}`;
-  const { articles } = listArticles(db, { pageSize: 20 });
-  const { posts } = listMicroPosts(db, { pageSize: 20 });
+  const { articles } = db.articles.list({ pageSize: 20 });
+  const { posts } = db.micro.list({ pageSize: 20 });
 
   const merged = [
     ...articles.map(a => ({ item: articleItem(a, baseUrl), date: new Date(a.published_at).getTime() })),
@@ -82,9 +82,9 @@ export function renderRssAll(db: Database, domain: string, siteTitle: string, si
   return buildFeed(merged, `${baseUrl}/rss.xml`, baseUrl, siteTitle, siteDescription);
 }
 
-export function renderRssArticles(db: Database, domain: string, siteTitle: string, siteDescription: string): string {
+export function renderRssArticles(db: GripDb, domain: string, siteTitle: string, siteDescription: string): string {
   const baseUrl = `https://${domain}`;
-  const { articles } = listArticles(db, { pageSize: 20 });
+  const { articles } = db.articles.list({ pageSize: 20 });
   return buildFeed(
     articles.map(a => articleItem(a, baseUrl)),
     `${baseUrl}/articles/rss.xml`,
@@ -95,9 +95,9 @@ export function renderRssArticles(db: Database, domain: string, siteTitle: strin
   );
 }
 
-export function renderRssMicro(db: Database, domain: string, siteTitle: string, siteDescription: string): string {
+export function renderRssMicro(db: GripDb, domain: string, siteTitle: string, siteDescription: string): string {
   const baseUrl = `https://${domain}`;
-  const { posts } = listMicroPosts(db, { pageSize: 20 });
+  const { posts } = db.micro.list({ pageSize: 20 });
   return buildFeed(
     posts.map(m => microItem(m, baseUrl)),
     `${baseUrl}/micro/rss.xml`,

@@ -1,12 +1,11 @@
-import type { Database } from 'bun:sqlite';
 import { publicLayout } from '../../../views/layout';
 import { paginationNav, esc } from '../../../views/shared';
-import { listArticles, getArticle } from '../../data/articles';
+import type { GripDb } from '../../data/index';
 
 const PAGE_SIZE = 10;
 
-export function renderArticlesList(db: Database, siteTitle: string, tag?: string, page = 1): JSX.Element {
-  const { articles, total } = listArticles(db, { page, tag, pageSize: PAGE_SIZE });
+export function renderArticlesList(db: GripDb, siteTitle: string, tag?: string, page = 1): JSX.Element {
+  const { articles, total } = db.articles.list({ page, tag, pageSize: PAGE_SIZE });
   const baseHref = tag ? `/articles?tag=${encodeURIComponent(tag)}` : '/articles';
 
   const content = (
@@ -50,8 +49,8 @@ export function renderArticlesList(db: Database, siteTitle: string, tag?: string
   );
 }
 
-export function renderArticle(db: Database, slug: string, siteTitle: string): JSX.Element | null {
-  const article = getArticle(db, slug);
+export function renderArticle(db: GripDb, slug: string, siteTitle: string): JSX.Element | null {
+  const article = db.articles.get(slug);
   if (!article) return null;
 
   const content = (

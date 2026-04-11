@@ -12,16 +12,16 @@
  *   {esc(value)}   →  explicit HTML-escape for untrusted/user-controlled strings
  *   {raw(html)}    →  explicit passthrough for pre-rendered HTML (trusted markdown output only)
  */
-import type { Database } from "bun:sqlite";
 import { getColorScheme, getThemeVersion } from "../core/themes";
-import { readPublicity, esc } from "./shared";
-import { getConfigValue } from "../server/data/config";
+import { esc } from "./shared";
+import type { GripDb } from "../server/data/index";
+import type { PublicityConfig } from "../server/data/config";
 
 export interface LayoutOptions {
   title: string;
   description?: string;
   siteTitle?: string;
-  db?: Database;
+  db?: GripDb;
   activeTag?: string;
   /** When true, renders full-width (no sidebar). Use for single-article/page views. */
   hideSidebar?: boolean;
@@ -32,37 +32,15 @@ export interface LayoutOptions {
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
 function buildSidebar(
-  db: Database,
-  pub: ReturnType<typeof readPublicity>,
+  db: GripDb,
+  pub: PublicityConfig,
   activeTag?: string,
 ): JSX.Element {
-  const descValue = getConfigValue(db, "site_description");
+  const descValue = db.config.get("site_description");
 
-  const recent = pub.showArticles
-    ? (db
-        .prepare(
-          `SELECT title, slug FROM articles
-           WHERE status = 'published'
-           ORDER BY published_at DESC LIMIT 6`,
-        )
-        .all() as { title: string; slug: string }[])
-    : [];
+  const recent = pub.showArticles ? db.articles.listRecent(6) : [];
 
-  const tags: string[] = [];
-  if (pub.showArticles) {
-    const tagRows = db
-      .prepare(
-        "SELECT tags FROM articles WHERE status = 'published' AND tags != '[]'",
-      )
-      .all() as { tags: string }[];
-    const tagSet = new Set<string>();
-    for (const row of tagRows) {
-      try {
-        (JSON.parse(row.tags) as string[]).forEach((t) => tagSet.add(t));
-      } catch {}
-    }
-    tags.push(...[...tagSet].sort());
-  }
+  const tags = pub.showArticles ? db.tags.list() : [];
 
   return (
     <aside class="sidebar">
@@ -120,23 +98,17 @@ export function publicLayout(
     activePath,
   } = opts;
 
-  const scheme = db ? getColorScheme(db) : "light";
-  const themeVersion = db ? getThemeVersion(db) : "default";
+  const scheme = db ? getColorScheme(db.raw) : "light";
+  const themeVersion = db ? getThemeVersion(db.raw) : "default";
   const pub = db
-    ? readPublicity(db)
-    : { showArticles: true, showMicro: true, rssEnabled: true };
+    ? db.config.getPublicity()
+    : { isPrivate: false, showArticles: true, showMicro: true, rssEnabled: true };
 
-  const domain = db ? (getConfigValue(db, "domain") ?? "") : "";
+  const domain = db ? (db.config.get("domain") ?? "") : "";
 
   const sidebar = db && !hideSidebar ? buildSidebar(db, pub, activeTag) : null;
 
-  const navPages = db
-    ? (db
-        .prepare(
-          "SELECT title, slug FROM pages WHERE status = 'published' ORDER BY title ASC",
-        )
-        .all() as { title: string; slug: string }[])
-    : [];
+  const navPages = db ? db.pages.list() : [];
 
   const canonicalBase = domain ? `https://${domain}` : "";
   const canonicalUrl = activePath ? `${canonicalBase}${activePath}` : canonicalBase;
@@ -233,8 +205,8 @@ export function publicLayout(
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 
-export function render404(db: Database): string {
-  const siteTitle = getConfigValue(db, "site_title") ?? "GRIP";
+export function render404(db: GripDb): string {
+  const siteTitle = db.config.get("site_title") ?? "GRIP";
   return publicLayout(
     { title: "Not Found", siteTitle, db },
     <div>
