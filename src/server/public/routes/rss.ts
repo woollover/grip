@@ -23,7 +23,7 @@ function articleItem(a: Article, baseUrl: string): FeedItem {
 }
 
 function microItem(m: MicroPost, baseUrl: string): FeedItem {
-  const text = m.body_md.replace(/\s+/g, ' ').trim();
+  const text = m.body_html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   const title = text.length > 80 ? text.slice(0, 77) + '…' : text;
   return {
     title,
