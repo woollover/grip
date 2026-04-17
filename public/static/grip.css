@@ -1185,6 +1185,10 @@ body.g-author hr {
   border-top-right-radius: 0 !important;
   margin-top: 0 !important;
 }
+body.g-author .md-editor textarea {
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+}
 .md-editor textarea.md-drag {
   border-color: var(--g-accent);
   box-shadow: 0 0 0 3px var(--g-accent-muted);

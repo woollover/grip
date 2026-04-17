@@ -20,36 +20,19 @@ const EDITOR_SCRIPT = `(function(){
   document.addEventListener('keydown',function(e){
     if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();var f=document.querySelector('.editor-shell form');if(f)f.requestSubmit();}
   });
-  // Preview toggle
+  // Preview toggle (grip-editor.js injects .md-toolbar into #write-pane)
   var toggleBtn=document.getElementById('preview-toggle-btn');
   var writePane=document.getElementById('write-pane');
   var previewPane=document.getElementById('preview-pane');
-  var toolbar=document.getElementById('editor-toolbar');
   var inPreview=false;
-  if(toggleBtn&&ta){
+  if(toggleBtn&&writePane){
     toggleBtn.addEventListener('click',function(){
       inPreview=!inPreview;
       writePane.style.display=inPreview?'none':'';
       previewPane.style.display=inPreview?'':'none';
-      if(toolbar)toolbar.style.display=inPreview?'none':'';
       toggleBtn.textContent=inPreview?'\\u2715 Write':'Preview';
     });
   }
-  // Formatting helpers
-  function wrap(b,a,ph){var s=ta.selectionStart,e=ta.selectionEnd,sel=ta.value.slice(s,e)||ph;ta.setRangeText(b+sel+(a||b),s,e,'select');ta.focus();ta.dispatchEvent(new Event('input'));}
-  function wrapLine(p){var s=ta.selectionStart,ls=ta.value.lastIndexOf('\\n',s-1)+1,le=ta.value.indexOf('\\n',s);if(le===-1)le=ta.value.length;var line=ta.value.slice(ls,le);ta.setRangeText(line.startsWith(p)?line.slice(p.length):p+line,ls,le,'end');ta.focus();ta.dispatchEvent(new Event('input'));}
-  window._edFmt={
-    bold:function(){wrap('**','**','bold text');},
-    italic:function(){wrap('*','*','italic text');},
-    strike:function(){wrap('~~','~~','text');},
-    code:function(){wrap('\`','\`','code');},
-    h2:function(){wrapLine('## ');},
-    h3:function(){wrapLine('### ');},
-    hr:function(){ta.setRangeText('\\n\\n---\\n\\n',ta.selectionStart,ta.selectionEnd,'end');ta.focus();ta.dispatchEvent(new Event('input'));},
-    link:function(){var s=ta.selectionStart,e=ta.selectionEnd,sel=ta.value.slice(s,e)||'link text';var url=prompt('URL:','https://');if(!url)return;ta.setRangeText('['+sel+']('+url+')',s,e,'end');ta.focus();ta.dispatchEvent(new Event('input'));}
-  };
-  // Keyboard shortcuts in textarea
-  if(ta)ta.addEventListener('keydown',function(e){if(e.ctrlKey||e.metaKey){if(e.key==='b'){e.preventDefault();window._edFmt.bold();}if(e.key==='i'){e.preventDefault();window._edFmt.italic();}if(e.key==='k'){e.preventDefault();window._edFmt.link();}}});
 })();`;
 
 type StatusFilter = 'all' | 'published' | 'draft' | 'unpublished';
@@ -158,26 +141,12 @@ export function renderArticleNew(db: GripDb): JSX.Element {
           <input type="text" name="tags" placeholder="tag1, tag2…" class="editor-meta-input" />
         </div>
 
-        <div class="editor-toolbar" id="editor-toolbar">
-          <button type="button" class="editor-toolbar-btn" title="Bold (Ctrl+B)" onclick="_edFmt.bold()"><strong>B</strong></button>
-          <button type="button" class="editor-toolbar-btn" title="Italic (Ctrl+I)" onclick="_edFmt.italic()"><em>I</em></button>
-          <button type="button" class="editor-toolbar-btn" title="Strikethrough" onclick="_edFmt.strike()"><s>S</s></button>
-          <button type="button" class="editor-toolbar-btn" title="Inline code" onclick="_edFmt.code()"><code style="font-size:.75rem">`</code></button>
-          <span class="editor-toolbar-sep" />
-          <button type="button" class="editor-toolbar-btn" title="Heading 2" onclick="_edFmt.h2()">H2</button>
-          <button type="button" class="editor-toolbar-btn" title="Heading 3" onclick="_edFmt.h3()">H3</button>
-          <span class="editor-toolbar-sep" />
-          <button type="button" class="editor-toolbar-btn" title="Horizontal rule" onclick="_edFmt.hr()">—</button>
-          <button type="button" class="editor-toolbar-btn" title="Link (Ctrl+K)" onclick="_edFmt.link()">🔗</button>
-          <span class="editor-toolbar-sep" />
-          {editorImageWidget()}
-        </div>
-
         <div class="editor-body">
           <div class="editor-write" id="write-pane">
             <textarea
               name="body"
               id="body"
+              data-md-editor
               hx-post="/preview"
               hx-trigger="input changed delay:400ms"
               hx-target="#preview-pane"

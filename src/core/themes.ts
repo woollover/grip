@@ -295,9 +295,9 @@ export function buildOverrideCss(custom: ThemeCustom): string {
     const bg = custom.colorBg;
     const mix = custom.colorScheme === "dark" ? "white" : "black";
     lines.push(`  --g-bg: ${bg};`);
-    lines.push(`  --g-surface: color-mix(in srgb, ${bg} 85%, ${mix} 15%);`);
-    lines.push(`  --g-surface-2: color-mix(in srgb, ${bg} 75%, ${mix} 25%);`);
-    lines.push(`  --g-code-bg: color-mix(in srgb, ${bg} 80%, ${mix} 20%);`);
+    lines.push(`  --g-surface: color-mix(in srgb, ${bg} 95%, ${mix} 5%);`);
+    lines.push(`  --g-surface-2: color-mix(in srgb, ${bg} 88%, ${mix} 12%);`);
+    lines.push(`  --g-code-bg: color-mix(in srgb, ${bg} 91%, ${mix} 9%);`);
   }
 
   if (custom.colorText) {
