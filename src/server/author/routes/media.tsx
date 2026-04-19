@@ -166,58 +166,6 @@ export function renderMediaIndex(db: GripDb, filter: MediaFilter = 'all'): JSX.E
   return authorLayout('Media', content, db, '/media');
 }
 
-export function editorImageWidget(): JSX.Element {
-  const script = `
-(function() {
-  var btn      = document.getElementById('insert-image-btn');
-  var input    = document.getElementById('image-file-input');
-  var textarea = document.querySelector('textarea[name="body"]');
-  btn.addEventListener('click', () => input.click());
-  input.addEventListener('change', async () => {
-    const file = input.files[0];
-    if (!file) return;
-    btn.disabled = true;
-    btn.textContent = 'Uploading\u2026';
-    const form = new FormData();
-    form.append('file', file);
-    form.append('altText', file.name.replace(/\\.[^.]+$/, ''));
-    try {
-      const res  = await fetch('/media/upload', { method: 'POST', body: form });
-      const data = await res.json();
-      const align = document.getElementById('img-align-picker')?.dataset.align ?? 'center';
-      const snippet = buildSnippet(data.alt, data.id, align);
-      const s = textarea.selectionStart, e = textarea.selectionEnd;
-      textarea.value = textarea.value.slice(0, s) + snippet + textarea.value.slice(e);
-      textarea.selectionStart = textarea.selectionEnd = s + snippet.length;
-      textarea.dispatchEvent(new KeyboardEvent('keyup'));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '\uD83D\uDCCE Insert image';
-      input.value = '';
-    }
-  });
-  function buildSnippet(alt, id, align) {
-    const src = '/media/' + id;
-    if (align === 'left')
-      return '<img src="' + src + '" alt="' + alt + '" style="float:left;margin:0 1.5rem 1rem 0">\\n\\n';
-    if (align === 'right')
-      return '<img src="' + src + '" alt="' + alt + '" style="float:right;margin:0 0 1rem 1.5rem">\\n\\n';
-    return '<img src="' + src + '" alt="' + alt + '" style="display:block;margin:0 auto">\\n\\n';
-  }
-})();
-`;
-
-  return (
-    <span>
-      <button type="button" id="insert-image-btn" class="btn btn-ghost btn-sm"
-        style="font-size:.72rem">
-        📎 Insert image
-      </button>
-      <input type="file" id="image-file-input" accept="image/*" style="display:none" />
-      <script>{script}</script>
-    </span>
-  );
-}
 
 async function saveUpload(
   db: GripDb, store: EventStore,

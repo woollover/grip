@@ -5,35 +5,8 @@ import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { paginationNav, fmtDate, esc } from '../../../views/shared';
 import type { GripDb } from '../../data/index';
-import { editorImageWidget } from './media';
 
 const PAGE_SIZE = 20;
-
-const EDITOR_SCRIPT = `(function(){
-  var ta=document.getElementById('body');
-  var wc=document.getElementById('word-count');
-  if(ta&&wc){
-    function upd(){var w=ta.value.trim()?ta.value.trim().split(/\\s+/).length:0;wc.textContent=w.toLocaleString()+' word'+(w!==1?'s':'');}
-    ta.addEventListener('input',upd);upd();
-  }
-  // Ctrl+S
-  document.addEventListener('keydown',function(e){
-    if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();var f=document.querySelector('.editor-shell form');if(f)f.requestSubmit();}
-  });
-  // Preview toggle (grip-editor.js injects .md-toolbar into #write-pane)
-  var toggleBtn=document.getElementById('preview-toggle-btn');
-  var writePane=document.getElementById('write-pane');
-  var previewPane=document.getElementById('preview-pane');
-  var inPreview=false;
-  if(toggleBtn&&writePane){
-    toggleBtn.addEventListener('click',function(){
-      inPreview=!inPreview;
-      writePane.style.display=inPreview?'none':'';
-      previewPane.style.display=inPreview?'':'none';
-      toggleBtn.textContent=inPreview?'\\u2715 Write':'Preview';
-    });
-  }
-})();`;
 
 type StatusFilter = 'all' | 'published' | 'draft' | 'unpublished';
 
@@ -122,56 +95,34 @@ export function renderArticlesIndex(db: GripDb, page = 1, statusFilter: StatusFi
 
 export function renderArticleNew(db: GripDb): JSX.Element {
   const content = (
-    <div class="editor-shell">
-      <div class="editor-topbar">
-        <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span class="editor-topbar-sep">›</span>
-        <a href="/articles" class="editor-topbar-crumb">Articles</a>
-        <div class="editor-spacer" />
-        <button type="submit" form="article-form" class="btn btn-primary btn-sm">Save draft</button>
-        <a href="/articles" class="btn btn-ghost btn-sm">Cancel</a>
+    <div class="writing-shell">
+      <div class="ws-topbar">
+        <a href="/articles" class="ws-back btn btn-ghost btn-sm">← Articles</a>
+        <span class="ws-topbar-center">New article</span>
+        <div class="ws-topbar-end">
+          <button type="submit" form="ws-form" class="btn btn-primary btn-sm">Save draft</button>
+        </div>
       </div>
-
-      <form id="article-form" method="POST" action="/articles">
-        <div class="editor-titlebar">
-          <input class="editor-title-input" type="text" name="title" placeholder="Article title…" required autofocus />
-        </div>
-        <div class="editor-metabar">
-          <span class="editor-meta-label">Tags</span>
-          <input type="text" name="tags" placeholder="tag1, tag2…" class="editor-meta-input" />
-        </div>
-
-        <div class="editor-body">
-          <div class="editor-write" id="write-pane">
-            <textarea
-              name="body"
-              id="body"
-              data-md-editor
-              hx-post="/preview"
-              hx-trigger="input changed delay:400ms"
-              hx-target="#preview-pane"
-              hx-swap="innerHTML"
-              placeholder="Write in Markdown…"
+      <form id="ws-form" method="POST" action="/articles">
+        <div class="ws-scroll">
+          <div class="ws-body">
+            <input
+              type="text"
+              name="title"
+              id="grip-title"
+              class="ws-title"
+              placeholder="Title…"
+              autofocus
+              required
             />
+            <div id="grip-body" class="cm6-mount"></div>
+            <textarea id="grip-hidden-body" name="body" style="display:none"></textarea>
           </div>
-          <div class="editor-preview" id="preview-pane" style="display:none">
-            <p class="editor-preview-empty">Nothing to preview yet.</p>
-          </div>
-        </div>
-
-        <div class="editor-footerbar">
-          <span id="word-count">0 words</span>
-          <div class="editor-footerbar-spacer" />
-          <button type="button" id="preview-toggle-btn" class="btn btn-ghost btn-sm" style="font-size:.7rem;height:22px">Preview</button>
-          <span class="editor-footerbar-hint">Ctrl+S</span>
         </div>
       </form>
-      <script src="/static/grip-editor.js" defer />
-      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
-
-  return authorLayout('New article', content, db, '/articles', true, true);
+  return authorLayout('New article', content, db, '/articles', true, false, true);
 }
 
 export function handleArticleCreate(
@@ -192,98 +143,101 @@ export function renderArticleEdit(db: GripDb, id: string): JSX.Element {
   const siteHost = db.config.getSite().domain;
 
   const content = (
-    <div class="editor-shell">
-      <div class="editor-topbar">
-        <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span class="editor-topbar-sep">›</span>
-        <a href="/articles" class="editor-topbar-crumb">Articles</a>
-        <div class="editor-spacer" />
-        <span class={`editor-status-pill status-${article.status}`}>{article.status}</span>
-        <button type="submit" form="article-form" class="btn btn-outline btn-sm">Save</button>
-        {article.status !== 'published'
-          ? <button type="submit" form="publish-form" class="btn btn-primary btn-sm">Publish</button>
-          : <button type="submit" form="unpublish-form" class="btn btn-ghost btn-sm">Unpublish</button>
-        }
-        {article.status === 'published' && (
-          <a href={`//${siteHost}/articles/${esc(article.slug)}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View ↗</a>
-        )}
+    <div class="writing-shell">
+      <div class="ws-topbar">
+        <a href="/articles" class="ws-back btn btn-ghost btn-sm">← Articles</a>
+        <span class="ws-save-indicator" id="save-indicator"></span>
+        <div class="ws-topbar-end">
+          <button type="button" id="ws-typewriter" class="btn btn-ghost btn-sm ws-mode-btn" title="Typewriter mode">T</button>
+          <button type="button" id="ws-focus" class="btn btn-ghost btn-sm ws-mode-btn" title="Focus mode">F</button>
+          <button type="submit" form="ws-form" class="btn btn-outline btn-sm">Save</button>
+          <button type="button" id="ws-drawer-toggle" class="btn btn-ghost btn-sm" title="Article settings">⚙</button>
+        </div>
       </div>
 
-      <form id="article-form" method="POST" action={`/articles/${id}/revise`}>
-        <div class="editor-titlebar">
-          <input
-            class="editor-title-input"
-            type="text"
-            name="title"
-            value={esc(article.title)}
-            required
-            autofocus
-          />
-        </div>
-        <div class="editor-metabar">
-          <span class="editor-meta-label">Tags</span>
-          <input
-            type="text"
-            name="tags"
-            value={article.tags.join(', ')}
-            placeholder="tag1, tag2…"
-            class="editor-meta-input"
-          />
-          <div class="editor-meta-sep" />
-          <span class="editor-meta-label">Slug</span>
-          <code class="editor-meta-slug">/{esc(article.slug)}</code>
-        </div>
-
-        <div class="editor-split">
-          <div class="editor-pane">
-            <div class="editor-pane-header">
-              <span>Markdown</span>
-              <div class="editor-pane-tools">{editorImageWidget()}</div>
-            </div>
-            <div class="editor-pane-body">
-              <textarea
-                name="body"
-                id="body"
-                data-md-editor
-                hx-post="/preview"
-                hx-trigger="load, keyup changed delay:300ms"
-                hx-target="#preview"
-              >{article.body_md}</textarea>
-            </div>
-          </div>
-          <div class="editor-pane">
-            <div class="editor-pane-header"><span>Preview</span></div>
-            <div class="editor-pane-body editor-preview" id="preview">
-              <p class="editor-preview-empty">Loading…</p>
-            </div>
+      <form id="ws-form" method="POST" action={`/articles/${id}/revise`}>
+        <div class="ws-scroll">
+          <div class="ws-body">
+            <input
+              type="text"
+              name="title"
+              id="grip-title"
+              class="ws-title"
+              value={esc(article.title)}
+              placeholder="Title…"
+            />
+            <div id="grip-body" class="cm6-mount"></div>
+            <textarea
+              id="grip-hidden-body"
+              name="body"
+              style="display:none"
+              hx-post={`/articles/${id}/autosave`}
+              hx-trigger="input changed delay:30s"
+              hx-target="#save-indicator"
+              hx-swap="innerHTML"
+            >{article.body_md}</textarea>
           </div>
         </div>
 
-        <div class="editor-footerbar">
-          <span id="word-count">— words</span>
-          <div class="editor-footerbar-spacer" />
-          <span class="editor-footerbar-hint">Ctrl+S to save</span>
-        </div>
+        <aside class="ws-drawer" id="ws-drawer">
+          <div class="ws-drawer-header">
+            <span class="ws-drawer-title">Article settings</span>
+            <button type="button" id="ws-drawer-close" class="btn btn-ghost btn-sm">✕</button>
+          </div>
+          <div class="ws-drawer-section">
+            <label class="ws-label">Tags</label>
+            <input type="text" name="tags" value={article.tags.join(', ')} placeholder="tag1, tag2…" class="ws-input" />
+          </div>
+          <div class="ws-drawer-section">
+            <label class="ws-label">Slug</label>
+            <input type="text" name="slug" value={esc(article.slug)} class="ws-input" />
+          </div>
+          <div class="ws-drawer-section">
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span class={`sdot sdot-${article.status === 'published' ? 'pub' : article.status === 'draft' ? 'draft' : 'unpub'}`} />
+              <span style="font-size:.78rem;color:var(--g-text-muted)">{article.status}</span>
+              {article.status === 'published' && (
+                <a href={`//${siteHost}/articles/${esc(article.slug)}`} target="_blank" rel="noopener" style="font-size:.72rem;color:var(--g-accent);margin-left:auto">View ↗</a>
+              )}
+            </div>
+          </div>
+          <div class="ws-drawer-section ws-drawer-actions">
+            <button type="submit" class="btn btn-outline btn-sm" style="width:100%">Save</button>
+            {article.status !== 'published'
+              ? <button type="submit" form="publish-form" class="btn btn-primary btn-sm" style="width:100%">Publish</button>
+              : <button type="submit" form="unpublish-form" class="btn btn-ghost btn-sm" style="width:100%">Unpublish</button>
+            }
+          </div>
+        </aside>
       </form>
 
       <form id="publish-form" method="POST" action={`/articles/${id}/publish`} style="display:none" />
       <form id="unpublish-form" method="POST" action={`/articles/${id}/unpublish`} style="display:none" />
-
-      <script src="/static/grip-editor.js" defer />
-      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
 
-  return authorLayout(`Edit: ${article.title}`, content, db, '/articles', true, true);
+  return authorLayout(`Edit: ${article.title}`, content, db, '/articles', true, false, true);
 }
 
 export function handleArticleRevise(
   db: GripDb, store: EventStore, id: string,
-  body: { title: string; body: string; tags?: string }
+  body: { title: string; body: string; tags?: string; slug?: string }
 ): void {
   const tags = (body.tags ?? '').split(',').map(t => t.trim()).filter(Boolean);
-  const event = { type: 'ArticleRevised' as const, id, title: body.title, body: body.body, tags };
+  const slug = body.slug?.trim() || undefined;
+  const event = { type: 'ArticleRevised' as const, id, title: body.title, body: body.body, tags, slug };
   commitEvent(db.raw, store, event);
+}
+
+export function handleArticleAutosave(
+  db: GripDb, store: EventStore, id: string,
+  body: { body?: string }
+): boolean {
+  const article = db.articles.getById(id);
+  if (!article) return false;
+  const event = { type: 'ArticleRevised' as const, id, title: article.title, body: body.body ?? '', tags: article.tags };
+  commitEvent(db.raw, store, event);
+  return true;
 }
 
 export function handleArticlePublish(db: GripDb, store: EventStore, id: string): void {

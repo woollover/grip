@@ -45,8 +45,8 @@ target/
 Cargo.lock
 
 # ─── GRIP user data — never commit ──────────────────────────────────────────────
-data/
-media/
+/data/
+/media/
 grip.toml
 
 # ─── Database (local-first) ──────────────────────────────────────────────────────
@@ -81,9 +81,7 @@ coverage/
 # ─── Claude Code (session state, not project config) ────────────────────────────
 # Keep: .claude/agents/, .claude/CLAUDE.md, .claude/MANIFESTO.md, .claude/settings.json
 # Ignore: runtime/session state
-.claude/agent-memory/**
-!.claude/agent-memory/.gitkeep
-.claude/
+.claude/**
 .vscode/
 .gstack/
 TODOS.md

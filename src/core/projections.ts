@@ -60,11 +60,12 @@ export function applyEvent(db: Database, event: GripEvent, createdAt: number): v
     case 'ArticleRevised': {
       db.prepare(`
         UPDATE articles
-        SET title = ?, body_md = ?, body_html = ?, tags = ?, updated_at = ?
+        SET title = ?, body_md = ?, body_html = ?, tags = ?,
+            slug = COALESCE(?, slug), updated_at = ?
         WHERE id = ?
       `).run(
         event.title, event.body, renderMd(event.body),
-        JSON.stringify(event.tags), createdAt, event.id
+        JSON.stringify(event.tags), event.slug ?? null, createdAt, event.id
       );
       break;
     }

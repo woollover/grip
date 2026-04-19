@@ -3,7 +3,7 @@
 export type GripEvent =
   // Articles
   | { type: 'ArticleCreated';     id: string; title: string; slug: string; body: string; tags: string[] }
-  | { type: 'ArticleRevised';     id: string; title: string; body: string; tags: string[] }
+  | { type: 'ArticleRevised';     id: string; title: string; body: string; tags: string[]; slug?: string }
   | { type: 'ArticlePublished';   id: string }
   | { type: 'ArticleUnpublished'; id: string }
 

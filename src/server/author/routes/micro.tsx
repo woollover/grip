@@ -28,23 +28,14 @@ export function renderMicroIndex(db: GripDb, page = 1): JSX.Element {
 
       <div class="composer">
         <form method="POST" action="/micro" id="micro-form">
-          <textarea
-            name="body"
-            placeholder="What's on your mind? Markdown supported."
-            required
-            data-md-editor="mini"
-            id="micro-body"
-          />
+          <div id="micro-body-mount" style="min-height:90px;padding:.9rem 1rem;cursor:text" onclick="document.querySelector('#micro-body-mount .cm-content')?.focus()"></div>
+          <textarea name="body" id="micro-body" style="display:none"></textarea>
           <div class="composer-footer">
             <span class="char-count" id="micro-char-count">0 / 500</span>
             <button type="submit" class="btn btn-primary btn-sm">Post</button>
           </div>
         </form>
       </div>
-
-      <script>{`document.getElementById('micro-body')?.addEventListener('input',function(){document.getElementById('micro-char-count').textContent=this.value.length+' / 500';});`}</script>
-      <script src="/static/grip-editor.js" defer />
-
       <div class="note-stream-hd">
         <span>Your notes</span>
         <span style="font-weight:400;text-transform:none;letter-spacing:0">{total} total</span>
@@ -85,7 +76,7 @@ export function renderMicroIndex(db: GripDb, page = 1): JSX.Element {
     </div>
   );
 
-  return authorLayout('Notes', content, db, '/micro');
+  return authorLayout('Notes', content, db, '/micro', false, false, true);
 }
 
 export function handleMicroCreate(

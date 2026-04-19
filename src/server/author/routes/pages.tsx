@@ -4,25 +4,7 @@ import { slugify } from '../../../core/utils';
 import { ulid } from 'ulidx';
 import { authorLayout } from './layout';
 import { esc } from '../../../views/shared';
-import { editorImageWidget } from './media';
-import { AlignPicker } from './shared';
 import type { GripDb } from '../../data/index';
-
-const EDITOR_SCRIPT = `(function(){
-  var ta=document.querySelector('textarea[name="body"]');
-  var wc=document.getElementById('word-count');
-  if(ta&&wc){
-    function upd(){var w=ta.value.trim()?ta.value.trim().split(/\\s+/).length:0;wc.textContent=w.toLocaleString()+' word'+(w!==1?'s':'');}
-    ta.addEventListener('input',upd);upd();
-  }
-  document.addEventListener('keydown',function(e){
-    if((e.ctrlKey||e.metaKey)&&e.key==='s'){
-      e.preventDefault();
-      var f=document.querySelector('.editor-shell form');
-      if(f)f.requestSubmit();
-    }
-  });
-})();`;
 
 export function renderPagesIndex(db: GripDb): JSX.Element {
   const pages = db.pages.listAdmin();
@@ -78,78 +60,35 @@ export function renderPagesIndex(db: GripDb): JSX.Element {
 
 export function renderPageNew(db: GripDb): JSX.Element {
   const content = (
-    <div class="editor-shell">
-      <div class="editor-topbar">
-        <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span class="editor-topbar-sep">›</span>
-        <a href="/pages" class="editor-topbar-crumb">Pages</a>
-        <div class="editor-spacer" />
-        <button type="submit" form="page-form" class="btn btn-primary btn-sm">Save draft</button>
-        <a href="/pages" class="btn btn-ghost btn-sm">Cancel</a>
+    <div class="writing-shell">
+      <div class="ws-topbar">
+        <a href="/pages" class="ws-back btn btn-ghost btn-sm">← Pages</a>
+        <span class="ws-topbar-center">New page</span>
+        <div class="ws-topbar-end">
+          <button type="submit" form="ws-form" class="btn btn-primary btn-sm">Save draft</button>
+        </div>
       </div>
-
-      <form id="page-form" method="POST" action="/pages">
-        <div class="editor-titlebar">
-          <input
-            class="editor-title-input"
-            type="text"
-            name="title"
-            placeholder="Page title…"
-            required
-            autofocus
-          />
-        </div>
-        <div class="editor-metabar">
-          <span class="editor-meta-label">Slug</span>
-          <input
-            type="text"
-            name="slug"
-            placeholder="auto-generated from title"
-            class="editor-meta-input"
-          />
-        </div>
-
-        <div class="editor-split">
-          <div class="editor-pane">
-            <div class="editor-pane-header">
-              <span>Markdown</span>
-              <div class="editor-pane-tools">
-                <AlignPicker />
-                {editorImageWidget()}
-              </div>
-            </div>
-            <div class="editor-pane-body">
-              <textarea
-                name="body"
-                id="body"
-                data-md-editor
-                hx-post="/preview"
-                hx-trigger="keyup changed delay:300ms"
-                hx-target="#preview"
-                placeholder="Write in Markdown…"
-              />
-            </div>
+      <form id="ws-form" method="POST" action="/pages">
+        <div class="ws-scroll">
+          <div class="ws-body">
+            <input
+              type="text"
+              name="title"
+              id="grip-title"
+              class="ws-title"
+              placeholder="Page title…"
+              autofocus
+              required
+            />
+            <div id="grip-page-body" class="cm6-mount"></div>
+            <textarea id="grip-hidden-page-body" name="body" style="display:none"></textarea>
+            <input type="hidden" name="slug" id="grip-page-slug" value="" />
           </div>
-          <div class="editor-pane">
-            <div class="editor-pane-header"><span>Preview</span></div>
-            <div class="editor-pane-body editor-preview" id="preview">
-              <p class="editor-preview-empty">Preview appears as you write…</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="editor-footerbar">
-          <span id="word-count">0 words</span>
-          <div class="editor-footerbar-spacer" />
-          <span class="editor-footerbar-hint">Ctrl+S to save</span>
         </div>
       </form>
-      <script src="/static/grip-editor.js" defer />
-      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
-
-  return authorLayout('New page', content, db, '/pages', true, true);
+  return authorLayout('New page', content, db, '/pages', true, false, true);
 }
 
 export function handlePageCreate(
@@ -169,86 +108,71 @@ export function renderPageEdit(db: GripDb, id: string): JSX.Element {
   const siteHost = db.config.getSite().domain;
 
   const content = (
-    <div class="editor-shell">
-      <div class="editor-topbar">
-        <a class="editor-topbar-brand" href="/dashboard">GRIP</a>
-        <span class="editor-topbar-sep">›</span>
-        <a href="/pages" class="editor-topbar-crumb">Pages</a>
-        <div class="editor-spacer" />
-        <span class={`editor-status-pill status-${page.status}`}>{page.status}</span>
-        <button type="submit" form="page-form" class="btn btn-outline btn-sm">Save</button>
-        {page.status !== 'published' && (
-          <button type="submit" form="publish-form" class="btn btn-primary btn-sm">Publish</button>
-        )}
-        {page.status === 'published' && (
-          <a href={`//${siteHost}/p/${esc(page.slug)}`} target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View ↗</a>
-        )}
+    <div class="writing-shell">
+      <div class="ws-topbar">
+        <a href="/pages" class="ws-back btn btn-ghost btn-sm">← Pages</a>
+        <span class="ws-save-indicator" id="save-indicator"></span>
+        <div class="ws-topbar-end">
+          <button type="button" id="ws-typewriter" class="btn btn-ghost btn-sm ws-mode-btn" title="Typewriter mode">T</button>
+          <button type="button" id="ws-focus" class="btn btn-ghost btn-sm ws-mode-btn" title="Focus mode">F</button>
+          <button type="submit" form="ws-form" class="btn btn-outline btn-sm">Save</button>
+          <button type="button" id="ws-drawer-toggle" class="btn btn-ghost btn-sm" title="Page settings">⚙</button>
+        </div>
       </div>
 
-      <form id="page-form" method="POST" action={`/pages/${id}/revise`}>
-        <div class="editor-titlebar">
-          <input
-            class="editor-title-input"
-            type="text"
-            name="title"
-            value={esc(page.title)}
-            required
-            autofocus
-          />
-        </div>
-        <div class="editor-metabar">
-          <span class="editor-meta-label">Slug</span>
-          <input
-            type="text"
-            name="slug"
-            value={esc(page.slug)}
-            class="editor-meta-input"
-          />
-        </div>
-
-        <div class="editor-split">
-          <div class="editor-pane">
-            <div class="editor-pane-header">
-              <span>Markdown</span>
-              <div class="editor-pane-tools">
-                <AlignPicker />
-                {editorImageWidget()}
-              </div>
-            </div>
-            <div class="editor-pane-body">
-              <textarea
-                name="body"
-                id="body"
-                data-md-editor
-                hx-post="/preview"
-                hx-trigger="load, keyup changed delay:300ms"
-                hx-target="#preview"
-              >{page.body_md}</textarea>
-            </div>
-          </div>
-          <div class="editor-pane">
-            <div class="editor-pane-header"><span>Preview</span></div>
-            <div class="editor-pane-body editor-preview" id="preview">
-              <p class="editor-preview-empty">Loading…</p>
-            </div>
+      <form id="ws-form" method="POST" action={`/pages/${id}/revise`}>
+        <div class="ws-scroll">
+          <div class="ws-body">
+            <input
+              type="text"
+              name="title"
+              id="grip-title"
+              class="ws-title"
+              value={esc(page.title)}
+              placeholder="Page title…"
+            />
+            <div id="grip-page-body" class="cm6-mount"></div>
+            <textarea
+              id="grip-hidden-page-body"
+              name="body"
+              style="display:none"
+            >{page.body_md}</textarea>
           </div>
         </div>
 
-        <div class="editor-footerbar">
-          <span id="word-count">— words</span>
-          <div class="editor-footerbar-spacer" />
-          <span class="editor-footerbar-hint">Ctrl+S to save</span>
-        </div>
+        <aside class="ws-drawer" id="ws-drawer">
+          <div class="ws-drawer-header">
+            <span class="ws-drawer-title">Page settings</span>
+            <button type="button" id="ws-drawer-close" class="btn btn-ghost btn-sm">✕</button>
+          </div>
+          <div class="ws-drawer-section">
+            <label class="ws-label">Slug</label>
+            <input type="text" name="slug" value={esc(page.slug)} class="ws-input" />
+          </div>
+          <div class="ws-drawer-section">
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span class={`sdot sdot-${page.status === 'published' ? 'pub' : 'draft'}`} />
+              <span style="font-size:.78rem;color:var(--g-text-muted)">{page.status}</span>
+              {page.status === 'published' && (
+                <a href={`//${siteHost}/p/${esc(page.slug)}`} target="_blank" rel="noopener" style="font-size:.72rem;color:var(--g-accent);margin-left:auto">View ↗</a>
+              )}
+            </div>
+          </div>
+          <div class="ws-drawer-section ws-drawer-actions">
+            <button type="submit" class="btn btn-outline btn-sm" style="width:100%">Save</button>
+            {page.status !== 'published'
+              ? <button type="submit" form="publish-form" class="btn btn-primary btn-sm" style="width:100%">Publish</button>
+              : null
+            }
+          </div>
+        </aside>
       </form>
 
       <form id="publish-form" method="POST" action={`/pages/${id}/publish`} style="display:none" />
-
-      <script src="/static/grip-editor.js" defer />
-      <script>{EDITOR_SCRIPT}</script>
     </div>
   );
 
-  return authorLayout(`Edit: ${page.title}`, content, db, '/pages', true, true);
+  return authorLayout(`Edit: ${page.title}`, content, db, '/pages', true, false, true);
 }
 
 export function handlePageRevise(

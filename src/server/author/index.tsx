@@ -20,6 +20,7 @@ import {
   handleArticleCreate,
   renderArticleEdit,
   handleArticleRevise,
+  handleArticleAutosave,
   handleArticlePublish,
   handleArticleUnpublish,
 } from "./routes/articles";
@@ -211,6 +212,16 @@ export function createAuthorApp(
     return new Response(null, {
       status: 302,
       headers: { Location: `/articles/${params.id}/edit` },
+    });
+  });
+
+  app.post("/articles/:id/autosave", ({ params, body, cookie }) => {
+    const guard = requireAuth(cv(cookie));
+    if (guard) return guard;
+    const ok = handleArticleAutosave(db, store, params.id, body as any);
+    if (!ok) return new Response('', { status: 404 });
+    return new Response('<span class="ws-saved-anim">Saved ✓</span>', {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
   });
 
